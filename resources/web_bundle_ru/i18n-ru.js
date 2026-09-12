@@ -1,7 +1,8 @@
 /**
  * Google Antigravity 2.0 — Russian Localization Engine (Open Source)
- * Автоматический перевод пользовательского интерфейса на русский язык.
- * Репозиторий: https://github.com/j46871417-ui/-Antigravity
+ * Автоматический перевод пользовательского интерфейса и размышлений на лету.
+ * Репозиторий: https://github.com/j46871417-ui/Antigravity-Localizer
+ * Сообщество: https://t.me/+8qU7020rMF84OWNi
  */
 (function () {
   'use strict';
@@ -959,490 +960,378 @@
   "Share": "Поделиться"
   };
 
-  function formatTime(str) {
-    if (!str) return '';
-    return str
-      .replace(/(\d+)\s+days?/gi, '$1 дн.')
-      .replace(/(\d+)\s+hours?/gi, '$1 ч.')
-      .replace(/(\d+)\s+minutes?/gi, '$1 мин.')
-      .replace(/(\d+)\s+seconds?/gi, '$1 сек.');
+  
+  // --- НА ЛЕТУ: ДВИЖОК ПЕРЕВОДА РАЗМЫШЛЕНИЙ (STREAMING REASONING TRANSLATOR) ---
+  const STORAGE_KEY_AUTO = 'ag_thoughts_auto_translate';
+  const STORAGE_KEY_VIEW = 'ag_thoughts_view_lang';
+
+  // Глобальный кэш переведённых абзацев и блоков
+  const paragraphCache = new Map();
+  const fullTextCache = new Map();
+  const inFlightRequests = new Map();
+
+  // Быстрый перевод отдельного абзаца/фрагмента через Google Translate API
+  async function translateChunk(chunk) {
+    if (!chunk || !chunk.trim()) return chunk;
+    const key = chunk.trim();
+    if (paragraphCache.has(key)) return paragraphCache.get(key);
+
+    try {
+      const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=' + encodeURIComponent(key);
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      if (Array.isArray(data) && Array.isArray(data[0])) {
+        const res = data[0].map(item => item[0]).join('');
+        if (res) {
+          paragraphCache.set(key, res);
+          return res;
+        }
+      }
+    } catch (e) {
+      // При сетевой ошибке возвращаем оригинал
+    }
+    return chunk;
   }
 
-  const RULES = [
-    {
-      regex: /^Select (.*) Theme$/i,
-      replace: function (m) { return "Выберите тему Antigravity"; }
-    },
-    {
-      regex: /^Manage (.*) app settings\.?$/i,
-      replace: function (m) { return "Управление настройками приложения Antigravity."; }
-    },
-    {
-      regex: /^Your Plan:\s*(.*)$/i,
-      replace: function (m) { return "Ваш тариф: " + m[1]; }
-    },
-    {
-      regex: /^When toggled on, .* will use your AI credits to fulfill model requests once you're out of model quota\..* will always use your model quota first before using AI credits\.$/i,
-      replace: function (m) {
-        return "При включении приложение будет использовать кредиты AI для выполнения запросов при исчерпании квоты моделей. В первую очередь всегда расходуется квота моделей.";
-      }
-    },
-    {
-      regex: /^Available AI Credits:\s*(.*)$/i,
-      replace: function (m) { return "Доступно кредитов AI: " + m[1]; }
-    },
-    {
-      regex: /^You have used some of your weekly limit, it will fully refresh in (.*)$/i,
-      replace: function (m) {
-        return "Часть недельного лимита израсходована, полное обновление через " + formatTime(m[1]);
-      }
-    },
-    {
-      regex: /^You have used some of your 5-hour limit, it will fully refresh in (.*)$/i,
-      replace: function (m) {
-        return "Часть 5-часового лимита израсходована, полное обновление через " + formatTime(m[1]);
-      }
-    },
-    {
-      regex: /^You have used some of your weekly \.\.\.$/i,
-      replace: function (m) { return "Часть недельного лимита израсходована..."; }
-    },
-    {
-      regex: /^You have used some of your 5-hour \.\.\.$/i,
-      replace: function (m) { return "Часть 5-часового лимита израсходована..."; }
-    },
-    {
-      regex: /^Learn more about (.*)$/i,
-      replace: function (m) {
-        const item = m[1].trim();
-        if (item.toLowerCase() === 'turbo mode') return "Подробнее о режиме Турбо";
-        return "Подробнее о " + item;
-      }
-    },
-    {
-      regex: /^Choose a permission preset\..*$/i,
-      replace: function (m) {
-        return "Выберите предустановку безопасности для агента.";
-      }
-    },
-    {
-      regex: /^Show\s+(\d+)\s+breakdowns?$/i,
-      replace: function (m) { return "Подробнее (" + m[1] + ")"; }
-    },
-    {
-      regex: /^No MCP servers found for "(.*)"$/i,
-      replace: function (m) { return 'Не найдены серверы MCP по запросу "' + m[1] + '"'; }
-    },
-    {
-      regex: /^See all \((\d+)\)$/i,
-      replace: function (m) { return "Показать все (" + m[1] + ")"; }
-    },
-    {
-      regex: /^When toggled on, .* collects usage data to help Google enhance performance and features\.?$/i,
-      replace: function (m) {
-        return "При включении данные об использовании отправляются в Google для улучшения функций.";
-      }
-    },
-    {
-      regex: /^Receive product updates, tips, and promotions from Google .* via email\.?$/i,
-      replace: function (m) {
-        return "Получать новости, советы и акции от Google по электронной почте.";
-      }
-    },
-    {
-      regex: /^Sign in to use (.*)!$/i,
-      replace: function (m) {
-        return "Войдите, чтобы использовать " + m[1] + "!";
-      }
-    },
-    {
-      regex: /^Show all \((\d+)\)$/i,
-      replace: function (m) { return "Показать все (" + m[1] + ")"; }
-    },
-    {
-      regex: /^(\d+)\s+conversations?$/i,
-      replace: function (m) { return m[1] + " диалог(ов)"; }
-    },
-    {
-      regex: /^(\d+)\s+projects?$/i,
-      replace: function (m) { return m[1] + " проект(ов)"; }
-    },
-    {
-      regex: /^(\d+)\s+tasks?$/i,
-      replace: function (m) { return m[1] + " задач(и)"; }
-    },
-    {
-      regex: /^(\d+)\s+files? changed$/i,
-      replace: function (m) { return "Изменено файлов: " + m[1]; }
-    },
-    {
-      regex: /^(\d+)\s+agents? running$/i,
-      replace: function (m) { return "Запущено агентов: " + m[1]; }
-    },
-    {
-      regex: /^(\d+)\s+of\s+(\d+)$/i,
-      replace: function (m) { return m[1] + " из " + m[2]; }
-    },
-    {
-      regex: /^(\d+)\s+items?$/i,
-      replace: function (m) { return m[1] + " эл."; }
-    }
-  ];
+  // Построчный/поблочный перевод всего потока размышлений с сохранением форматирования Markdown
+  async function translateLiveText(fullText) {
+    if (!fullText || typeof fullText !== 'string') return fullText;
+    if (fullTextCache.has(fullText)) return fullTextCache.get(fullText);
+    if (inFlightRequests.has(fullText)) return inFlightRequests.get(fullText);
 
-  const IGNORE_TAGS = new Set([
-    'SCRIPT', 'STYLE', 'CODE', 'PRE', 'TEXTAREA', 'INPUT'
-  ]);
+    const promise = (async () => {
+      const lines = fullText.split('\n');
+      const translatedLines = [];
+      let inCodeBlock = false;
 
-  function isIgnored(node) {
-    if (!node) return true;
-    let el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
-    while (el) {
-      if (IGNORE_TAGS.has(el.tagName)) return true;
-      if (
-        el.classList &&
-        (el.classList.contains('token') ||
-         el.classList.contains('prism') ||
-         el.classList.contains('monaco-editor') ||
-         el.classList.contains('cm-editor') ||
-         el.classList.contains('xterm'))
-      ) {
-        return true;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+
+        // Пропускаем блоки кода (```) без изменений
+        if (trimmed.startsWith('```')) {
+          inCodeBlock = !inCodeBlock;
+          translatedLines.push(line);
+          continue;
+        }
+        if (inCodeBlock || !trimmed) {
+          translatedLines.push(line);
+          continue;
+        }
+
+        // Сохраняем отступы списков
+        const match = line.match(/^(\s*[-*•\d\.]+\s+)(.*)$/);
+        if (match) {
+          const prefix = match[1];
+          const text = match[2];
+          const tr = await translateChunk(text);
+          translatedLines.push(prefix + tr);
+        } else {
+          const tr = await translateChunk(trimmed);
+          translatedLines.push(tr);
+        }
       }
-      if (el.getAttribute && el.getAttribute('data-notranslate') !== null) {
-        return true;
-      }
-      el = el.parentElement;
+
+      const result = translatedLines.join('\n');
+      fullTextCache.set(fullText, result);
+      return result;
+    })();
+
+    inFlightRequests.set(fullText, promise);
+    try {
+      return await promise;
+    } finally {
+      inFlightRequests.delete(fullText);
     }
-    return false;
   }
 
-  function translateString(text) {
-    if (typeof text !== 'string') return null;
-    const trimmed = text.trim();
-    if (!trimmed) return null;
+  // Хелпер для перевода заголовков блоков действий
+  window.__ag_trH = function (s) {
+    if (typeof s !== 'string') return s;
+    return s.replace(/Worked for (\d+)s/g, 'Работал $1 с')
+            .replace(/Worked for (\d+)m/g, 'Работал $1 мин')
+            .replace(/Worked for (\d+)h/g, 'Работал $1 ч')
+            .replace(/Thinking for (\d+)s/g, 'Размышлял $1 с')
+            .replace(/Thought for (\d+)s/g, 'Размышлял $1 с')
+            .replace(/Thought for (\d+)m/g, 'Размышлял $1 мин')
+            .replace(/Thought Process/g, 'Ход размышлений');
+  };
 
-    const startSpace = text.match(/^\s*/)[0];
-    const endSpace = text.match(/\s*$/)[0];
+  // React-компонент, встраиваемый непосредственно в рендерер kib внутри main.js
+  window.__ag_renderThought = function (props) {
+    const { y: React, g: MarkdownRenderer, bW: Collapsible, jib: Timer, f: SteerButton, m: SteerEditor, k: renderInner, a: thinking, b: triggerOrig, c: metadata, e: isActive, l: isRunning } = props;
 
-    for (let i = 0; i < RULES.length; i++) {
-      const match = trimmed.match(RULES[i].regex);
-      if (match) {
-        return startSpace + RULES[i].replace(match) + endSpace;
-      }
+    if (!window.__AgThoughtWrapper) {
+      window.__AgThoughtWrapper = function ThoughtWrapper(p) {
+        const { React, MarkdownRenderer, Collapsible, Timer, SteerButton, SteerEditor, renderInner, thinking, triggerOrig, metadata, isActive, isRunning } = p;
+
+        // Автоперевод включен по умолчанию (true)
+        const [autoTranslate, setAutoTranslate] = React.useState(() => {
+          const saved = localStorage.getItem(STORAGE_KEY_AUTO);
+          return saved === null ? true : saved !== 'false';
+        });
+
+        // Язык просмотра: 'ru' по умолчанию
+        const [viewLang, setViewLang] = React.useState(() => {
+          return localStorage.getItem(STORAGE_KEY_VIEW) || 'ru';
+        });
+
+        const [translated, setTranslated] = React.useState(() => {
+          return fullTextCache.get(thinking) || '';
+        });
+
+        const [isTranslating, setIsTranslating] = React.useState(false);
+
+        // Отслеживание потокового обновления текста размышлений (на лету!)
+        React.useEffect(() => {
+          if (!thinking) return;
+
+          if (fullTextCache.has(thinking)) {
+            setTranslated(fullTextCache.get(thinking));
+            return;
+          }
+
+          if (!autoTranslate && viewLang !== 'ru') {
+            return;
+          }
+
+          let cancelled = false;
+          // Во время активной генерации — debounce 300мс для плавного потока
+          const delay = isActive ? 300 : 50;
+
+          const timer = setTimeout(async () => {
+            if (cancelled) return;
+            setIsTranslating(true);
+            try {
+              const res = await translateLiveText(thinking);
+              if (!cancelled && res) {
+                setTranslated(res);
+              }
+            } catch (err) {
+              console.warn('[i18n-thought]', err);
+            } finally {
+              if (!cancelled) setIsTranslating(false);
+            }
+          }, delay);
+
+          return () => {
+            cancelled = true;
+            clearTimeout(timer);
+          };
+        }, [thinking, autoTranslate, viewLang, isActive]);
+
+        const handleToggleLang = (ev) => {
+          ev.stopPropagation();
+          const next = viewLang === 'ru' ? 'en' : 'ru';
+          setViewLang(next);
+          localStorage.setItem(STORAGE_KEY_VIEW, next);
+          if (next === 'ru' && !translated) {
+            setIsTranslating(true);
+            translateLiveText(thinking).then(res => {
+              if (res) setTranslated(res);
+            }).finally(() => setIsTranslating(false));
+          }
+        };
+
+        const handleToggleAuto = (ev) => {
+          ev.stopPropagation();
+          const next = !autoTranslate;
+          setAutoTranslate(next);
+          localStorage.setItem(STORAGE_KEY_AUTO, next ? 'true' : 'false');
+        };
+
+        const isShowingRu = viewLang === 'ru';
+        const textToRender = (isShowingRu && translated) ? translated : thinking;
+
+        // Локализация заголовка триггера
+        let customHeaderContent = triggerOrig;
+        if (typeof triggerOrig === 'string') {
+          customHeaderContent = window.__ag_trH(triggerOrig);
+        }
+
+        // Тулбар с кнопками [🌐 RU / EN] и [⚡ Авто: ВКЛ / ВЫКЛ]
+        const customTrigger = React.createElement("div", {
+          className: "flex items-center justify-between w-full pr-1.5 select-none",
+          style: { width: "100%" }
+        },
+          React.createElement("div", { className: "flex items-center gap-2 min-w-0" },
+            customHeaderContent,
+            isTranslating ? React.createElement("span", {
+              className: "text-[11px] text-amber-500 font-medium flex items-center gap-1 shrink-0 animate-pulse",
+              title: "Идёт потоковый перевод размышлений на лету..."
+            }, "⚡ перевод...") : null
+          ),
+          React.createElement("div", {
+            className: "flex items-center gap-1.5 shrink-0 ml-2",
+            onClick: (ev) => ev.stopPropagation()
+          },
+            React.createElement("button", {
+              type: "button",
+              onClick: handleToggleLang,
+              className: `text-[11px] font-semibold px-2 py-0.5 rounded cursor-pointer transition-all ${
+                isShowingRu
+                  ? "bg-primary text-primary-foreground shadow-xs hover:opacity-90"
+                  : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
+              }`,
+              title: isShowingRu ? "Показан русский перевод. Кликните для просмотра оригинала на английском" : "Показан оригинал. Кликните для перевода на русский"
+            }, isShowingRu ? "🌐 RU" : "🌐 EN"),
+            React.createElement("button", {
+              type: "button",
+              onClick: handleToggleAuto,
+              className: `text-[10px] font-medium px-1.5 py-0.5 rounded cursor-pointer transition-all ${
+                autoTranslate
+                  ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/30"
+                  : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
+              }`,
+              title: autoTranslate ? "Автоперевод на лету ВКЛЮЧЁН (кликните для отключения)" : "Автоперевод на лету ВЫКЛЮЧЕН (кликните для включения)"
+            }, autoTranslate ? "⚡ Авто: ВКЛ" : "⚡ Авто: ВЫКЛ")
+          )
+        );
+
+        const customInner = (txt, run) => React.createElement("div", {
+          className: "cursor-edit group relative text-secondary-foreground pl-2"
+        }, React.createElement(MarkdownRenderer, { animate: run }, txt));
+
+        return React.createElement(Collapsible, {
+          trigger: customTrigger,
+          isActive: isActive,
+          dataTestId: "thinking-collapsible-trigger",
+          maxHeight: 200,
+          autoScroll: true,
+          smoothScroll: false
+        },
+          SteerButton && React.createElement(SteerButton, { metadata: metadata, isRunning: isRunning }),
+          SteerEditor
+            ? React.createElement(SteerEditor, { metadata: metadata, thinking: textToRender, isRunning: isRunning }, customInner)
+            : customInner(textToRender, isRunning)
+        );
+      };
     }
+
+    return React.createElement(window.__AgThoughtWrapper, {
+      key: props.c ? (props.c.stepId || props.c.timestamp || 'thought') : 'thought',
+      React,
+      MarkdownRenderer,
+      Collapsible,
+      Timer,
+      SteerButton,
+      SteerEditor,
+      renderInner,
+      thinking,
+      triggerOrig: props.b,
+      metadata,
+      isActive,
+      isRunning
+    });
+  };
+
+
+  // --- СЛОВАРНЫЙ ПЕРЕВОД ТЕКСТОВЫХ НОД И АТРИБУТОВ DOM ---
+  function translateText(text) {
+    if (!text) return text;
+    var trimmed = text.trim();
+    if (!trimmed) return text;
 
     if (DICT[trimmed]) {
-      return startSpace + DICT[trimmed] + endSpace;
+      var ru = DICT[trimmed];
+      if (text.startsWith(' ') || text.endsWith(' ')) {
+        var leading = text.match(/^\s*/)[0];
+        var trailing = text.match(/\s*$/)[0];
+        return leading + ru + trailing;
+      }
+      return ru;
     }
 
-    return null;
+    return text;
   }
 
   function translateNode(node) {
     if (!node) return;
     if (node.nodeType === Node.TEXT_NODE) {
-      if (isIgnored(node)) return;
-      const translated = translateString(node.nodeValue);
-      if (translated && translated !== node.nodeValue) {
-        node.nodeValue = translated;
-      }
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      if (isIgnored(node)) return;
-
-      if (node.hasAttribute('placeholder')) {
-        const trans = translateString(node.getAttribute('placeholder'));
-        if (trans) node.setAttribute('placeholder', trans);
-      }
-      if (node.hasAttribute('title')) {
-        const trans = translateString(node.getAttribute('title'));
-        if (trans) node.setAttribute('title', trans);
-      }
-      if (node.hasAttribute('aria-label')) {
-        const trans = translateString(node.getAttribute('aria-label'));
-        if (trans) node.setAttribute('aria-label', trans);
-      }
-
-      for (let child = node.firstChild; child; child = child.nextSibling) {
-        translateNode(child);
-      }
-    }
-  }
-
-  try {
-    const origNodeValueDesc = Object.getOwnPropertyDescriptor(Node.prototype, 'nodeValue');
-    if (origNodeValueDesc && origNodeValueDesc.set) {
-      const origSet = origNodeValueDesc.set;
-      Object.defineProperty(Node.prototype, 'nodeValue', {
-        get: origNodeValueDesc.get,
-        set: function (val) {
-          if (this.nodeType === Node.TEXT_NODE && typeof val === 'string' && !isIgnored(this)) {
-            const trans = translateString(val);
-            if (trans) val = trans;
-          }
-          return origSet.call(this, val);
-        },
-        configurable: true,
-        enumerable: true
-      });
-    }
-
-    const origTextContentDesc = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
-    if (origTextContentDesc && origTextContentDesc.set) {
-      const origTextSet = origTextContentDesc.set;
-      Object.defineProperty(Node.prototype, 'textContent', {
-        get: origTextContentDesc.get,
-        set: function (val) {
-          if (typeof val === 'string' && !isIgnored(this)) {
-            const trans = translateString(val);
-            if (trans) val = trans;
-          }
-          return origTextSet.call(this, val);
-        },
-        configurable: true,
-        enumerable: true
-      });
-    }
-  } catch (e) {
-    console.warn('[i18n-ru] Hook setup error:', e);
-  }
-
-  function startObserver() {
-    const observer = new MutationObserver((mutations) => {
-      for (let i = 0; i < mutations.length; i++) {
-        const m = mutations[i];
-        if (m.type === 'childList') {
-          for (let j = 0; j < m.addedNodes.length; j++) {
-            translateNode(m.addedNodes[j]);
-          }
-        } else if (m.type === 'characterData') {
-          translateNode(m.target);
-        } else if (m.type === 'attributes') {
-          if (['placeholder', 'title', 'aria-label'].includes(m.attributeName)) {
-            const val = m.target.getAttribute(m.attributeName);
-            const trans = translateString(val);
-            if (trans && trans !== val) {
-              m.target.setAttribute(m.attributeName, trans);
-            }
-          }
+      var parent = node.parentElement;
+      if (parent) {
+        var tag = parent.tagName ? parent.tagName.toLowerCase() : '';
+        if (tag === 'script' || tag === 'style' || tag === 'textarea' || tag === 'code' || tag === 'pre') {
+          return;
+        }
+        if (parent.closest && parent.closest('.cursor-edit, pre, code')) {
+          return; // Не трогаем код и прямой вывод консоли
         }
       }
-    });
+      var val = node.nodeValue;
+      if (val && val.trim()) {
+        var tr = translateText(val);
+        if (tr !== val) {
+          node.nodeValue = tr;
+        }
+      }
+      return;
+    }
 
-    observer.observe(document.documentElement, {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      var el = node;
+      var tag = el.tagName ? el.tagName.toLowerCase() : '';
+      if (tag === 'script' || tag === 'style' || tag === 'textarea' || tag === 'code' || tag === 'pre') {
+        return;
+      }
+      if (el.closest && el.closest('.cursor-edit, pre, code')) {
+        return;
+      }
+
+      // Плейсхолдеры и тултипы
+      if (el.placeholder && DICT[el.placeholder.trim()]) {
+        el.placeholder = DICT[el.placeholder.trim()];
+      }
+      if (el.title && DICT[el.title.trim()]) {
+        el.title = DICT[el.title.trim()];
+      }
+      if (el.getAttribute) {
+        var aria = el.getAttribute('aria-label');
+        if (aria && DICT[aria.trim()]) {
+          el.setAttribute('aria-label', DICT[aria.trim()]);
+        }
+      }
+
+      var child = el.firstChild;
+      while (child) {
+        var next = child.nextSibling;
+        translateNode(child);
+        child = next;
+      }
+    }
+  }
+
+  var observer = new MutationObserver(function (mutations) {
+    for (var i = 0; i < mutations.length; i++) {
+      var m = mutations[i];
+      if (m.type === 'childList') {
+        for (var j = 0; j < m.addedNodes.length; j++) {
+          translateNode(m.addedNodes[j]);
+        }
+      } else if (m.type === 'characterData') {
+        translateNode(m.target);
+      }
+    }
+  });
+
+  if (document.body) {
+    translateNode(document.body);
+    observer.observe(document.body, {
       childList: true,
       subtree: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: ['placeholder', 'title', 'aria-label']
+      characterData: true
     });
-
-    setInterval(() => {
-      translateNode(document.body);
-    }, 200);
-
-    translateNode(document.body || document.documentElement);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startObserver);
   } else {
-    startObserver();
+    document.addEventListener('DOMContentLoaded', function () {
+      translateNode(document.body);
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+    });
   }
 
-  
-// =========================================================================
-// Dynamic On-the-Fly Thinking / Thought Process Translator
-// =========================================================================
-(function () {
-  const STORAGE_KEY_AUTO = 'ag_thoughts_auto_translate';
-  const CACHE = new Map();
-
-  function isAutoTranslate() {
-    try {
-      return localStorage.getItem(STORAGE_KEY_AUTO) === 'true';
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function setAutoTranslate(val) {
-    try {
-      localStorage.setItem(STORAGE_KEY_AUTO, val ? 'true' : 'false');
-    } catch (e) {}
-  }
-
-  async function translateText(text) {
-    if (!text || !text.trim()) return text;
-    const trimmed = text.trim();
-    if (CACHE.has(trimmed)) return CACHE.get(trimmed);
-
-    try {
-      const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=' + encodeURIComponent(trimmed);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      if (Array.isArray(data) && Array.isArray(data[0])) {
-        const translated = data[0].map(function (item) { return item[0] || ''; }).join('');
-        if (translated) {
-          CACHE.set(trimmed, translated);
-          return translated;
-        }
-      }
-    } catch (e) {
-      console.warn('[i18n-ru] Thought translation error:', e);
-    }
-    return text;
-  }
-
-  function processThinkingBlock(triggerEl) {
-    if (!triggerEl || triggerEl.dataset.hasTranslateControls) return;
-    triggerEl.dataset.hasTranslateControls = 'true';
-
-    var collapsible = triggerEl.closest('[data-testid="thinking-collapsible-trigger"]') || triggerEl;
-    var parentContainer = collapsible.parentElement;
-    if (!parentContainer) return;
-
-    var toolbar = document.createElement('span');
-    toolbar.className = 'ag-thought-toolbar';
-    toolbar.style.cssText = 'display:inline-flex; align-items:center; gap:6px; margin-left:10px; font-size:11px; font-family:sans-serif; vertical-align:middle; z-index:10;';
-
-    // 1. RU / EN Button
-    var btnTranslate = document.createElement('button');
-    btnTranslate.type = 'button';
-    btnTranslate.className = 'ag-btn-ru-en';
-    btnTranslate.innerText = '🌐 RU';
-    btnTranslate.title = 'Перевести размышления на русский';
-    btnTranslate.style.cssText = 'padding:1px 6px; border-radius:4px; border:1px solid rgba(128,128,128,0.3); background:rgba(128,128,128,0.1); cursor:pointer; font-size:11px; color:inherit; font-weight:bold;';
-
-    // 2. Auto toggle
-    var btnAuto = document.createElement('button');
-    btnAuto.type = 'button';
-    btnAuto.className = 'ag-btn-auto';
-
-    function updateAutoBtn() {
-      var auto = isAutoTranslate();
-      btnAuto.innerText = auto ? '⚡ Авто: ВКЛ' : '⚡ Авто: ВЫКЛ';
-      btnAuto.style.cssText = 'padding:1px 6px; border-radius:4px; border:1px solid ' + (auto ? '#22c55e' : 'rgba(128,128,128,0.3)') + '; background:' + (auto ? 'rgba(34,197,94,0.15)' : 'rgba(128,128,128,0.1)') + '; color:' + (auto ? '#16a34a' : 'inherit') + '; cursor:pointer; font-size:11px;';
-      btnAuto.title = auto ? 'Автоперевод включен. Кликните для отключения' : 'Автоперевод выключен. Кликните для автоматического перевода мыслей';
-    }
-    updateAutoBtn();
-
-    btnAuto.onclick = function (e) {
-      e.stopPropagation();
-      setAutoTranslate(!isAutoTranslate());
-      var allBtns = document.querySelectorAll('.ag-btn-auto');
-      for (var i = 0; i < allBtns.length; i++) {
-        var auto = isAutoTranslate();
-        allBtns[i].innerText = auto ? '⚡ Авто: ВКЛ' : '⚡ Авто: ВЫКЛ';
-        allBtns[i].style.borderColor = auto ? '#22c55e' : 'rgba(128,128,128,0.3)';
-        allBtns[i].style.backgroundColor = auto ? 'rgba(34,197,94,0.15)' : 'rgba(128,128,128,0.1)';
-        allBtns[i].style.color = auto ? '#16a34a' : 'inherit';
-      }
-      if (isAutoTranslate()) {
-        doTranslate();
-      }
-    };
-
-    var isShowingRussian = false;
-    var originalText = null;
-
-    async function doTranslate() {
-      var contentEl = parentContainer.querySelector('.cursor-edit') || parentContainer.querySelector('pre') || parentContainer;
-      if (!contentEl) return;
-
-      if (!originalText) {
-        originalText = contentEl.innerText;
-      }
-
-      btnTranslate.innerText = '⏳ ...';
-      var ru = await translateText(originalText);
-      if (ru && ru !== originalText) {
-        contentEl.innerText = ru;
-        isShowingRussian = true;
-        btnTranslate.innerText = '🌐 EN';
-        btnTranslate.title = 'Показать оригинальный английский текст';
-        btnTranslate.style.backgroundColor = 'rgba(59, 130, 246, 0.2)';
-        btnTranslate.style.borderColor = '#3b82f6';
-      } else {
-        btnTranslate.innerText = '🌐 RU';
-      }
-    }
-
-    function doShowEnglish() {
-      var contentEl = parentContainer.querySelector('.cursor-edit') || parentContainer.querySelector('pre') || parentContainer;
-      if (contentEl && originalText) {
-        contentEl.innerText = originalText;
-        isShowingRussian = false;
-        btnTranslate.innerText = '🌐 RU';
-        btnTranslate.title = 'Перевести размышления на русский';
-        btnTranslate.style.backgroundColor = 'rgba(128,128,128,0.1)';
-        btnTranslate.style.borderColor = 'rgba(128,128,128,0.3)';
-      }
-    }
-
-    btnTranslate.onclick = function (e) {
-      e.stopPropagation();
-      if (isShowingRussian) {
-        doShowEnglish();
-      } else {
-        doTranslate();
-      }
-    };
-
-    toolbar.appendChild(btnTranslate);
-    toolbar.appendChild(btnAuto);
-    triggerEl.appendChild(toolbar);
-
-    if (isAutoTranslate()) {
-      setTimeout(doTranslate, 600);
-    }
-  }
-
-  function scanForThinkingBlocks() {
-    var triggers = document.querySelectorAll('[data-testid="thinking-collapsible-trigger"]');
-    for (var i = 0; i < triggers.length; i++) {
-      processThinkingBlock(triggers[i]);
-    }
-
-    var copyBtns = document.querySelectorAll('button[title="Copy thinking"], button[title="Копировать размышления"]');
-    for (var j = 0; j < copyBtns.length; j++) {
-      var btn = copyBtns[j];
-      var parent = btn.closest('div');
-      if (parent && !parent.dataset.hasTranslateControls) {
-        parent.dataset.hasTranslateControls = 'true';
-        (function (b, p) {
-          var ruBtn = document.createElement('button');
-          ruBtn.type = 'button';
-          ruBtn.innerText = '🌐 RU';
-          ruBtn.title = 'Перевести размышления на русский';
-          ruBtn.style.cssText = 'padding:1px 5px; font-size:10px; border-radius:3px; border:1px solid rgba(128,128,128,0.3); background:rgba(128,128,128,0.1); cursor:pointer; margin-right:4px; color:inherit;';
-          ruBtn.onclick = async function (e) {
-            e.stopPropagation();
-            var pre = p.parentElement ? p.parentElement.querySelector('pre') : null;
-            if (pre) {
-              if (!pre._origEn) pre._origEn = pre.innerText;
-              if (pre._isRu) {
-                pre.innerText = pre._origEn;
-                pre._isRu = false;
-                ruBtn.innerText = '🌐 RU';
-              } else {
-                ruBtn.innerText = '...';
-                var tr = await translateText(pre._origEn);
-                pre.innerText = tr;
-                pre._isRu = true;
-                ruBtn.innerText = '🌐 EN';
-              }
-            }
-          };
-          b.parentElement.insertBefore(ruBtn, b);
-        })(btn, parent);
-      }
-    }
-  }
-
-  setInterval(scanForThinkingBlocks, 500);
-})();
-
-
-  console.log('[i18n-ru] Russian localization fully active with ' + Object.keys(DICT).length + ' strings');
+  console.log('[i18n-ru] Antigravity 2.0 Russian Localization & On-The-Fly Thought Translator fully active');
 })();
