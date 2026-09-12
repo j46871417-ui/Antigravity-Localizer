@@ -67,12 +67,14 @@
     "Access rules": "Правила доступа",
     "Access to the browser agent tools is blocked by your organization's admin controls policy.": "Доступ к инструментам браузера заблокирован политикой вашей организации.",
     "Account": "Аккаунт",
+    "Accuracy": "Точность",
     "Action required": "Требуется действие",
     "Actionable": "Действенный",
     "Actions": "Действия",
     "Active Agent": "Активный агент",
     "Active Agents": "Активные агенты",
     "Active Browser page": "Активная страница браузера",
+    "Active Browser pages": "Активные страницы браузера",
     "Active Context Start": "Начало активного контекста",
     "Active environment: os=": "Активная среда: os=",
     "Active Subagents": "Активные субагенты",
@@ -117,18 +119,22 @@
     "Agent can scroll on browser pages to access more content.": "Агент может прокручивать страницы браузера, чтобы получить доступ к большему контенту.",
     "Agent cannot modify files outside of the workspace in strict mode.": "Агент не может изменять файлы за пределами рабочей области в строгом режиме.",
     "Agent completed": "Агент завершил задачу",
+    "Agent data is not available": "Данные агента недоступны",
     "Agent Edits": "Правки агента",
     "Agent execution terminated due to error.": "Выполнение агента прервано из-за ошибки.",
     "Agent Hooks Configuration": "Конфигурация агентских перехватчиков",
     "Agent Host Address": "Хост-адрес агента",
     "Agent ID:": "Идентификатор агента:",
+    "Agent is analyzing videos": "Агент анализирует видео...",
     "Agent Market Search Results": "Результаты поиска на рынке агентов",
     "Agent never asks for review. This maximizes the autonomy of the Agent, but also has the highest risk of the Agent operating over unsafe or injected Artifact content.": "Агент никогда не запрашивает проверку. Максимальная автономность, но повышенный риск работы с небезопасным содержимым.",
     "Agent Non-Workspace File Access": "Доступ агента к файлам вне пространства",
+    "Agent permissions preset selector": "Выбор пресета разрешений агента",
     "Agent response": "Ответ агента",
     "Agent Script": "Скрипт агента",
     "Agent Script Command Configuration": "Конфигурация команды сценария агента",
     "Agent security mode": "Режим безопасности агента",
+    "Agent Security Settings": "Настройки безопасности агента",
     "Agent Settings": "Настройки агента",
     "Agent Settings (For Project)": "Настройки агента (для проекта)",
     "Agent Stopped": "Агент остановлен",
@@ -150,6 +156,7 @@
     "Allow All": "Разрешить все",
     "Allow command execution": "Разрешить выполнение команд",
     "Allow creating issues and grant access to specific issues.": "Разрешить создавать задачи и предоставить доступ к конкретным задачам.",
+    "Allow full browser script execution without prompting.": "Разрешить полное выполнение скриптов браузера без запроса.",
     "Allow List Terminal Commands": "Список разрешённых команд",
     "Allow Once": "Разрешить один раз",
     "Allow once": "Разрешить один раз",
@@ -157,6 +164,7 @@
     "Allow options": "Разрешить параметры",
     "Allow outbound connections": "Разрешить исходящие соединения",
     "Allow reading workflow runs (list, view, watch) across the whole repository.": "Разрешить чтение рабочих процессов (список, просмотр, просмотр) по всему репозиторию.",
+    "Allow remote debugging for this browser instance": "Разрешить удаленную отладку для этого экземпляра браузера",
     "Allow sandboxed commands to make network requests.": "Разрешить изолированным командам доступ к сети.",
     "Allow Tab to view and edit the files in .gitignore. Use with caution if your .gitignore lists files containing credentials, secrets, or other sensitive information.": "Разрешить Tab просматривать и редактировать файлы из .gitignore. Используйте осторожно, если в .gitignore указаны файлы с секретами или паролями.",
     "Allow the agent to run without restrictions.": "Разрешить агенту работу без ограничений.",
@@ -166,6 +174,7 @@
     "Allow/deny agent read access to specific URLs or domains.": "Разрешить/запретить агенту чтение URL или доменов.",
     "Allow/deny agent write access to specific files or directories.": "Разрешить/запретить агенту запись в файлы или каталоги.",
     "Allow/deny specific terminal commands.": "Разрешить или запретить конкретные команды терминала.",
+    "Allowed Domains": "Разрешенные домены",
     "Allowed Hosts": "Разрешенные хосты",
     "Allows the agent to access files outside of your current workspace.": "Разрешает агенту доступ к файлам вне текущего рабочего пространства.",
     "Alphabetical (A-Z)": "Алфавитный (А-Я)",
@@ -181,8 +190,12 @@
     "Always Proceed": "Всегда продолжать",
     "Always run": "Всегда запускайте",
     "An error occurred while submitting your feedback. Please try again.": "Произошла ошибка при отправке отзыва. Пожалуйста, попробуйте снова.",
+    "Analyzed": "Проанализировано",
+    "Analyzed content": "Содержимое проанализировано",
     "Analyzed Task Log": "Лог задачи проанализирован",
-    "Analyzing Task Log": "Анализ лога задачи",
+    "Analyzing": "Анализ...",
+    "Analyzing content": "Анализ содержимого...",
+    "Analyzing Task Log": "Анализ лога задачи...",
     "Analyzing...": "Анализ...",
     "Android (main)": "Андроид (основной)",
     "Antigravity Interactive HTML": "Антигравитационный интерактивный HTML",
@@ -226,6 +239,8 @@
     "Ask First": "Сначала спросить",
     "Ask first": "Сначала спросить",
     "Ask for permission for sensitive operations.": "Запрашивать разрешение для важных операций.",
+    "Asked": "Запрошено",
+    "Asking": "Запрос...",
     "at ref": "по ссылке",
     "Attach a screenshot (optional)": "Прикрепить снимок экрана (необязательно)",
     "Attach Antigravity server logs": "Прикрепить логи сервера Antigravity",
@@ -269,20 +284,21 @@
     "Baseline model quota reached": "Базовая квота модели исчерпана",
     "Battle Mode Infos": "Информация о боевом режиме",
     "Before": "До",
-    "Best of N": "Best of N",
+    "Best of N": "Лучший из N",
     "Best of N mode is not available": "Режим Best of N недоступен.",
     "Best of N Models": "Лучшая из N моделей",
     "Best-of-N Ended": "Лучшее из N завершено",
     "Best-of-N Started": "Начался лучший из N",
     "Block": "Блокировать",
     "Block All": "Блокировать все",
+    "Block all browser JavaScript execution.": "Блокировать выполнение JavaScript в браузере.",
     "Blocked": "Заблокировано",
     "Blocked on Your Input": "Ожидает вашего ввода",
     "Blocked, needs input": "Заблокировано, требуется ввод",
     "Bot Name": "Имя бота",
     "Branch": "Ветка",
     "Branch / Ref": "Филиал / Ссылка",
-    "Branch Changes": "Изменения в филиалах",
+    "Branch Changes": "Изменения ветки",
     "Browse": "Обзор",
     "Browse and enable plugins from the Build With Google catalog.": "Просмотр и включение плагинов из каталога Build With Google.",
     "Browse the Marketplace": "Каталог плагинов",
@@ -291,14 +307,19 @@
     "Browser Actuation Permissions": "Разрешения на управление браузером",
     "Browser Actuation Rules": "Правила управления браузером",
     "Browser CDP Port": "Порт Chrome DevTools Protocol",
+    "Browser Configuration Required": "Требуется настройка браузера",
     "Browser Javascript Execution Policy": "Политика исполнения JavaScript в браузере",
     "Browser Settings": "Настройки браузера",
+    "Browser Subagent Viewer": "Просмотрщик браузерного субагента",
+    "Browser Task": "Задача браузера",
     "Browser tools (browser_.*)": "Инструменты браузера (browser_.*)",
     "Browser User Profile Path": "Путь к профилю браузера",
     "Bug Report": "Отчёт об ошибке",
     "Buganizer": "Буганизатор",
     "Build with Google": "Создавайте вместе с Google",
     "Build With Google Plugins": "Плагины от Google",
+    "Building": "Сборка...",
+    "Built": "Собрано",
     "Built-in Skills": "Встроенные навыки",
     "by Google": "от Google",
     "By kind": "По виду",
@@ -319,8 +340,9 @@
     "Cannot send message to subagent.": "Невозможно отправить сообщение субагенту.",
     "Capture console logs": "Захват логов консоли",
     "Capture screenshot": "Сделать снимок экрана",
+    "Captured": "Захвачено",
     "Captured DOM tree for": "Захваченное дерево DOM для",
-    "Capturing": "Захват",
+    "Capturing": "Захват...",
     "Cascade Config": "Каскадная конфигурация",
     "Cascade ID": "Каскадный идентификатор",
     "Cascade ID:": "Идентификатор каскада:",
@@ -359,7 +381,9 @@
     "Click to copy URL": "Нажмите, чтобы скопировать URL",
     "Click to go there, drag to select a range, drag an edge to resize": "Нажмите, чтобы перейти туда, перетащите, чтобы выбрать диапазон, перетащите край, чтобы изменить размер.",
     "Click to view more": "Нажмите, чтобы увидеть больше",
+    "Clicked in Browser": "Клик выполнен в браузере",
     "Clicking": "Щелчок",
+    "Clicking in Browser": "Клик в браузере...",
     "Clone current workspace": "Клонировать рабочее пространство",
     "Clone current workspace into a new independent workspace": "Клонировать текущую рабочую область в новую независимую",
     "Close": "Закрыть",
@@ -411,6 +435,7 @@
     "Concierge voice message failed": "Голосовое сообщение консьержа не удалось",
     "Concierge voice mode is active": "Голосовой режим консьержа активен",
     "Concierge voice mode stopped": "Голосовой режим консьержа отключен",
+    "Configuration saved successfully!": "Конфигурация успешно сохранена!",
     "Configure": "Настроить",
     "Configure a chat bot so you can use Jetski directly from Google Chat.": "Настройте чат-бота, чтобы вы могли использовать Jetski прямо из Google Chat.",
     "Configure agent execution, queued message delivery, and permissions.": "Настройка выполнения агента, доставки сообщений в очереди и разрешений.",
@@ -435,6 +460,7 @@
     "Configure Worktree Branches": "Настройка ветвей рабочего дерева",
     "Configures how the agent tries to access files outside of its working folders.": "Настройка доступа агента к файлам за пределами рабочих папок.",
     "Confirm": "Подтвердить",
+    "Confirm Browser Interaction": "Подтвердить действие в браузере",
     "Confirm the command is safe to run outside of the sandbox with full network and disk access.": "Убедитесь, что команду можно безопасно запускать за пределами песочницы с полным доступом к сети и диску.",
     "Confirm Undo": "Подтвердить откат",
     "Confirm Window Reload": "Подтвердить перезагрузку окна",
@@ -507,12 +533,18 @@
     "Count": "Граф",
     "Create": "Создать",
     "Create a Jetski debug bundle (host config + logs + summaries + in-browser agent state) and share it with the Jetski team for debugging.": "Создайте пакет отладки Jetski (конфигурация хоста + журналы + сводки + состояние агента в браузере) и поделитесь им с командой Jetski для отладки.",
+    "Create a Project": "Создать проект",
     "Create a token": "Создать токен",
+    "Create New": "Создать",
     "Create New Project": "Создать новый проект",
     "Create or select a CitC workspace to use in this conversation": "Создайте или выберите рабочее пространство CitC для использования в этом разговоре.",
     "Create Project": "Создать проект",
     "Create project": "Создать проект",
+    "Create project from scratch": "Создать проект с нуля",
     "Create with Prompt": "Создать с помощью подсказки",
+    "Created a new branch on GitHub.": "Создана новая ветка на GitHub.",
+    "Created a new branch on Origin.": "Создана новая ветка на Origin.",
+    "Created outline": "Создана структура",
     "Creating Chat Bot": "Создание чат-бота",
     "Creating Cloud Project": "Создание облачного проекта",
     "Creating projects for your conversations": "Создание проектов для ваших разговоров",
@@ -527,19 +559,20 @@
     "Current parameter:": "Текущий параметр:",
     "Current Workspace": "Текущее пространство",
     "Current workspace": "Текущее пространство",
-    "Custom": "Пользовательский",
+    "Custom": "Пользовательские",
     "Custom Agents": "Пользовательские агенты",
     "Custom agents are not available in Best of N mode.": "Пользовательские агенты недоступны в режиме Best of N.",
     "Custom Flags": "Пользовательские флаги",
     "Custom Model": "Пользовательская модель",
     "Custom Models": "Пользовательские модели",
+    "Custom models are only supported on Linux machines.": "Пользовательские модели поддерживаются только на Linux.",
     "Custom path for the browser user profile directory. Leave empty for default (~/.gemini/antigravity-browser-profile).": "Кастомный путь к профилю браузера. Оставьте пустым для значения по умолчанию.",
     "Custom Skills": "Пользовательские навыки",
     "Custom View": "Пользовательский вид",
     "Customization": "Настройки",
     "Customization Profile [Beta]": "Профиль настройки [бета]",
     "Customization token budget exceeded. Large customizations will be truncated.": "Лимит токенов на настройки превышен. Крупные элементы будут усечены.",
-    "Customizations": "Кастомизация",
+    "Customizations": "Настройки агента",
     "Customizations & Skills": "Настройки и навыки",
     "Customize": "Настроить",
     "Customize Global Skills": "Настроить общие навыки",
@@ -559,14 +592,20 @@
     "Default Light": "Стандартная светлая",
     "Default Model": "Модель по умолчанию",
     "Delete": "Удалить",
+    "Delete agent": "Удалить агента",
+    "Delete command": "Удалить команду",
     "Delete comment": "Удалить комментарий",
     "Delete Conversation": "Удалить диалог",
     "Delete Data Directory": "Удалить каталог данных",
     "Delete Handler": "Удалить обработчик",
     "Delete Hook": "Удалить хук",
     "Delete MCP Server": "Удалить MCP-сервер",
+    "Delete organization policy": "Удалить политику организации",
     "Delete Permanently": "Удалить навсегда",
+    "Delete plugin": "Удалить плагин",
     "Delete project": "Удалить проект",
+    "Delete repository policy": "Удалить политику репозитория",
+    "Delete server": "Удалить сервер",
     "Delete Task": "Удалить задачу",
     "Delete Terminal": "Закрыть терминал",
     "Deleted": "Удалено",
@@ -596,6 +635,7 @@
     "Discover helpful skills & plugins": "Каталог навыков и плагинов",
     "Dismiss": "Закрыть",
     "Dismiss announcement": "Скрыть объявление",
+    "Dismiss error": "Закрыть ошибку",
     "Display and preserve intermediate thinking steps.": "Отображать и сохранять промежуточные шаги рассуждений.",
     "Display Options": "Параметры отображения",
     "Displaying raw protobuf object (failed to format as JSON). Enums and timestamps are shown in their internal numeric/binary format.": "Отображение необработанного объекта protobuf (не удалось отформатировать как JSON). Перечисления и временные метки отображаются во внутреннем числовом/двоичном формате.",
@@ -609,6 +649,8 @@
     "Download Diagnostics": "Скачать диагностику",
     "Download the bundle manually and share it instead:": "Загрузите пакет вручную и поделитесь им:",
     "Drag to resize, double-click to reset": "Перетащите, чтобы изменить размер, дважды щелкните, чтобы сбросить",
+    "Dragged in Browser": "Перетащено в браузере",
+    "Dragging in Browser": "Перетаскивание в браузере...",
     "Drop files here": "Перетащите файлы сюда",
     "Drop to add to Agent": "Перетащите, чтобы передать агенту",
     "Duration:": "Продолжительность:",
@@ -621,13 +663,16 @@
     "e.g., curl": "например, завиток",
     "e.g., npm test": "например, тест npm",
     "e.g., refs/heads/main or main": "например, refs/heads/main или main",
+    "Economy": "Экономный",
     "Edit": "Правка",
     "Edit Comment": "Редактировать комментарий",
     "Edit comment": "Редактировать комментарий",
     "Edit Config": "Редактировать конфигурацию",
+    "Edit Custom Model": "Редактировать пользовательскую модель",
     "Edit Model": "Редактировать модель",
     "Edit task title": "Редактировать название задачи",
-    "Edited": "Правка",
+    "Edited": "Отредактировано",
+    "Editing": "Редактирование...",
     "Editing...": "Редактирование...",
     "Editor": "Редактор",
     "Editor Settings": "Настройки редактора",
@@ -683,15 +728,28 @@
     "Equalize Split Panes": "Выровнять панели",
     "Error": "Ошибка",
     "Error Details:": "Подробности ошибки:",
+    "Error during tool execution": "Ошибка выполнения инструмента",
+    "Error editing file": "Ошибка редактирования файла",
+    "Error editing notebook": "Ошибка редактирования блокнота",
     "Error fetching MCP prompt": "Ошибка получения приглашения MCP.",
     "Error ID:": "ID ошибки:",
     "Error loading Browser recording": "Ошибка загрузки записи браузера.",
     "Error Loading Models": "Ошибка загрузки моделей",
+    "Error occurred": "Произошла ошибка",
+    "Error reading notebook": "Ошибка чтения блокнота",
     "Error rendering playback": "Ошибка рендеринга воспроизведения",
+    "Error viewing file": "Ошибка чтения файла",
+    "Error while analyzing directory": "Ошибка при анализе каталога",
     "Error while editing": "Ошибка при редактировании",
     "Error while editing notebook": "Ошибка при редактировании блокнота",
     "Error while reading notebook": "Ошибка при чтении блокнота",
-    "Error while viewing": "Ошибка при просмотре",
+    "Error while running command": "Ошибка при выполнении команды",
+    "Error while running MCP tool": "Ошибка при вызове инструмента MCP",
+    "Error while searching": "Ошибка при поиске",
+    "Error while searching filesystem": "Ошибка при поиске в файловой системе",
+    "Error while searching the web": "Ошибка при поиске в интернете",
+    "Error while semantic searching": "Ошибка при семантическом поиске",
+    "Error while viewing": "Ошибка при чтении",
     "Error:": "Ошибка:",
     "Error: No artifact URI provided in URL parameters.": "Ошибка: в параметрах URL не указан URI артефакта.",
     "Errors": "Ошибки",
@@ -704,7 +762,10 @@
     "example:\\nsource ~/.jetski_shell_setup": "пример:\\nsource ~/.jetski_shell_setup",
     "Excluded Step": "Исключенный шаг",
     "Exec": "Исполнительный директор",
+    "Execute browser JavaScript": "Выполнить JavaScript в браузере",
     "Execute URLs": "Выполнение URL",
+    "Executed": "Выполнено",
+    "Executing": "Выполнение...",
     "Executing task: ": "Выполнение задачи: ",
     "Executing...": "Выполнение...",
     "Execution": "Выполнение",
@@ -728,9 +789,13 @@
     "Extension (VS Code)": "Расширение (код VS)",
     "External": "Внешний",
     "External tools the agent can call via Model Context Protocol.": "Внешние инструменты, которые агент может вызывать через MCP.",
+    "Extracted DOM elements": "Элементы DOM извлечены",
+    "Extracting DOM elements": "Извлечение элементов DOM...",
     "Failed": "Ошибка",
     "Failed target:": "Неудачная цель:",
+    "Failed to approve browser interaction": "Не удалось подтвердить действие в браузере",
     "Failed to archive workspace": "Не удалось заархивировать рабочую область.",
+    "Failed to build": "Не удалось собрать",
     "Failed to Commit": "Не удалось совершить фиксацию",
     "Failed to continue": "Не удалось продолжить",
     "Failed to create CitC clone workspace": "Не удалось создать рабочее пространство клона CitC.",
@@ -738,19 +803,26 @@
     "Failed to create workspace.": "Не удалось создать рабочую область.",
     "Failed to create worktree": "Не удалось создать рабочее дерево.",
     "Failed to delete conversation": "Не удалось удалить диалог",
+    "Failed to edit": "Не удалось отредактировать",
+    "Failed to execute": "Не удалось выполнить",
     "Failed to fetch diffs": "Не удалось получить различия.",
     "Failed to fork conversation": "Не удалось разветвить чат.",
     "Failed to Generate Commit Message": "Не удалось создать сообщение о фиксации",
     "Failed to load conversation": "Не удалось загрузить диалог",
+    "Failed to load diff.": "Не удалось загрузить изменения.",
     "Failed to load image": "Не удалось загрузить изображение",
     "Failed to load shared conversation": "Не удалось загрузить общий разговор.",
     "Failed to load some diffs": "Не удалось загрузить некоторые различия.",
     "Failed to load trajectory": "Не удалось загрузить траекторию.",
     "Failed to proceed": "Не удалось продолжить",
     "Failed to Push": "Не удалось нажать",
+    "Failed to read": "Не удалось прочитать",
     "Failed to read file content": "Не удалось прочитать содержимое файла",
+    "Failed to reject browser interaction": "Не удалось отклонить действие в браузере",
     "Failed to rename conversation": "Не удалось переименовать цепочку.",
+    "Failed to run": "Не удалось запустить",
     "Failed to save project": "Не удалось сохранить проект",
+    "Failed to search": "Не удалось выполнить поиск",
     "Failed to share conversation": "Не удалось поделиться беседой.",
     "Failed to start Best of N mode": "Не удалось запустить режим Best of N.",
     "Failed to start conversation": "Не удалось начать диалог",
@@ -767,8 +839,12 @@
     "Feedback": "Обратная связь",
     "feedback guide": "руководство по обратной связи",
     "Feedback Type": "Тип отзыва",
+    "Fetched network request": "Сетевой запрос получен",
     "Fetched network request for page.": "Получен сетевой запрос для страницы.",
+    "Fetched network requests": "Сетевые запросы получены",
     "Fetched network requests for page.": "Получены сетевые запросы для страницы.",
+    "Fetching network request": "Получение сетевого запроса...",
+    "Fetching network requests": "Получение сетевых запросов...",
     "File": "Файл",
     "File Access": "Доступ к файлам",
     "File access": "Доступ к файлам",
@@ -784,9 +860,9 @@
     "File Tree Component is not loaded.": "Компонент дерева файлов не загружен.",
     "File Writes": "Запись файлов",
     "Files": "Файлы",
-    "Files Changed": "Изменённые файлы",
+    "Files Changed": "Файлы изменены",
     "Files changed": "Изменённые файлы",
-    "Files modified by the agent in this conversation": "Файлы, изменённые агентом в этом диалоге",
+    "Files modified by the agent in this conversation": "Файлы, измененные агентом в этом диалоге",
     "Files to edit:": "Файлы для редактирования:",
     "Filter": "Фильтр",
     "Finalizing transcription...": "Завершение транскрипции...",
@@ -829,7 +905,7 @@
     "Gcert from the Jetski UI": "Gcert из пользовательского интерфейса Jetski",
     "GCP Project ID for enterprise features.": "Идентификатор проекта GCP для корпоративных функций.",
     "Gemini Models": "Модели Gemini",
-    "General": "Основные",
+    "General": "Общие",
     "General Feedback": "Общий отзыв",
     "Generate personalized rules": "Создавайте персонализированные правила",
     "Generating...": "Генерация...",
@@ -837,6 +913,7 @@
     "Generations": "Поколения",
     "Generator Metadata": "Генератор метаданных",
     "Generator metadata is present but does not contain ChatModelMetadata.": "Метаданные генератора присутствуют, но не содержат ChatModelMetadata.",
+    "Get More AI Credits": "Получить больше AI-кредитов",
     "Get Started": "Начать",
     "Getting scripts...": "Получение скриптов...",
     "GitHub": "GitHub",
@@ -853,6 +930,7 @@
     "Go Forward": "Вперёд",
     "Go Forward in Pane": "Вперед в панели",
     "Go to": "Перейти к",
+    "Go to global settings": "Перейти к глобальным настройкам",
     "Go to Next Invocation": "Перейти к следующему вызову",
     "Go to the machine you are controlling and quit Antigravity. It installs pending updates the next time it starts.": "Подойдите к машине, которой вы управляете, и выйдите из Антигравитации. При следующем запуске он устанавливает ожидающие обновления.",
     "go/jetski-agent-sidecars#trusted-locations": "go/jetski-agent-sidecars#trusted-locations",
@@ -889,6 +967,7 @@
     "Hide 0s": "Скрыть 0",
     "Hide breakdown": "Скрыть детали",
     "Hide diff": "Скрыть различия",
+    "Hide Error": "Скрыть ошибку",
     "Hide output": "Скрыть вывод",
     "Hide reasoning": "Скрыть рассуждения",
     "High": "Высокая точность",
@@ -946,6 +1025,7 @@
     "Installing Chat Bot": "Установка чат-бота",
     "Installing...": "Установка...",
     "Instances": "Экземпляры",
+    "Instantly create a new project and folder to start building.": "Мгновенно создайте новый проект и папку для начала разработки.",
     "Insufficient AI Credits": "Недостаточно AI-кредитов",
     "Intended primarily for previewing local development servers (e.g.,": "Предназначен в первую очередь для предварительного просмотра локальных серверов разработки (например,",
     "Inv": "Инв",
@@ -982,6 +1062,7 @@
     "Layout Controls": "Управление разметкой",
     "Learn more": "Подробнее",
     "Learn more about": "Узнайте больше о",
+    "Learn more about customization profiles": "Подробнее о профилях настроек",
     "Learn more about Turbo mode": "Подробнее о режиме Турбо",
     "Learn more.": "Подробнее.",
     "Let the agent access its knowledge base to inform its responses and automatically generate knowledge items in the background. Turning this off prevents the agent from accessing existing knowledge items, but doesn't delete them.": "Разрешить агенту обращаться к базе знаний и автоматически создавать записи в фоне.",
@@ -1054,7 +1135,7 @@
     "Manage your model quota and credits.": "Управление квотами моделей и кредитами.",
     "Manage your notification preferences.": "Управление параметрами уведомлений.",
     "Manage your plan, credentials, and general preferences.": "Управление подпиской, учётными данными и общими параметрами.",
-    "Manifest Changes": "Проявление изменений",
+    "Manifest Changes": "Изменения манифеста",
     "Manually customize individual settings.": "Ручная настройка отдельных параметров.",
     "Many external websites (such as Google Search, GitHub, or Wikipedia) restrict iframe embedding via": "Многие внешние веб-сайты (например, Google Search, GitHub или Wikipedia) ограничивают встраивание iframe через",
     "Mark all as read": "Отметить все как прочитанное",
@@ -1109,6 +1190,10 @@
     "More actions": "Другие действия",
     "More options": "Дополнительные параметры",
     "Mount Directory": "Каталог монтирования",
+    "Mouse button pressed": "Кнопка мыши нажата",
+    "Mouse button released": "Кнопка мыши отпущена",
+    "Moved Mouse in Browser": "Мышь перемещена в браузере",
+    "Moving Mouse in Browser": "Перемещение мыши в браузере...",
     "Multi-conversation view is not available": "Просмотр нескольких разговоров недоступен.",
     "Multi-select": "Множественный выбор",
     "Name": "Имя",
@@ -1146,6 +1231,7 @@
     "Next Aux Pane Tab": "Следующая вкладка",
     "Next match (Enter)": "Следующее совпадение (Enter)",
     "Next Pane Tab": "Следующая вкладка панели",
+    "Next: Review Permissions": "Далее: проверить разрешения",
     "Nickname": "Псевдоним",
     "No": "Нет",
     "No active terminals": "Нет активных терминалов",
@@ -1160,6 +1246,7 @@
     "No changes detected": "Изменений не обнаружено",
     "No changes to review": "Нет изменений для проверки",
     "No content available for this resource": "Для этого ресурса нет контента",
+    "No conversation selected": "Диалог не выбран",
     "No conversations found": "Диалоги не найдены",
     "No conversations yet": "Пока нет диалогов",
     "No corp passwords": "Никаких корпоративных паролей",
@@ -1172,8 +1259,10 @@
     "No file changes": "Нет изменений файлов",
     "No files changed": "Файлы не изменены",
     "No files or folders found": "Файлы и папки не найдены",
+    "No folder selected": "Папка не выбрана",
     "No folders added yet.": "Папки пока не добавлены.",
     "No handlers configured for": "Обработчики не настроены для",
+    "No installed plugins match your search.": "Установленные плагины не соответствуют поиску.",
     "No internet. Agent features may not work.": "Нет подключения к Интернету. Функции агента могут не работать.",
     "No Invocation Associated": "Никакой вызов не связан",
     "No Invocation Metadata": "Нет метаданных вызова",
@@ -1196,6 +1285,7 @@
     "No plugins available": "Плагины недоступны",
     "No Plugins Available": "Нет доступных плагинов",
     "No plugins available.": "Нет доступных плагинов.",
+    "No plugins match your search.": "Плагины не соответствуют поиску.",
     "No previous worktrees": "Нет предыдущих рабочих деревьев",
     "No Project": "Нет проекта",
     "No project selected": "Проект не выбран",
@@ -1246,16 +1336,19 @@
     "One lane per kind of step, or one per step type": "Одна полоса для каждого типа шага или одна для каждого типа шага.",
     "One row per step, in order \\u2014 scroll to move through the run": "Одна строка на шаг, чтобы \\u2014 прокручивать и перемещаться по пробегу.",
     "Open": "Открыть",
+    "Open a browser URL": "Открыть URL в браузере",
     "Open Agent on Reload": "Открывать агента при перезагрузке",
     "Open Agent panel on window reload": "Открывать панель агента при перезагрузке окна",
     "Open allowlist": "Открыть белый список",
     "Open Antigravity IDE": "Открыть Antigravity IDE",
+    "Open Browser Setup": "Открыть настройку браузера",
     "Open Command Palette": "Палитра команд",
     "Open Commit Graph": "Граф коммитов",
     "Open Conversation": "Открыть диалог",
     "Open Conversation History": "Открыть историю диалогов",
     "Open Conversation Picker": "Выбор диалога",
     "Open Diff": "Открыть разницу",
+    "Open Editor Settings": "Открыть настройки редактора",
     "Open extracted DOM in editor": "Открыть извлеченный DOM в редакторе",
     "Open File": "Открыть файл",
     "Open File Search": "Открыть поиск файлов",
@@ -1282,14 +1375,18 @@
     "Open Project": "Открыть проект",
     "Open project settings": "Открыть настройки проекта",
     "Open Settings": "Открыть настройки",
+    "Open settings menu": "Открыть меню настроек",
     "Open side-by-side view": "Открыть вид рядом",
     "Open SSH connection in setup window. When finished, you will be able to select the workspace in the sidebar.": "Откройте SSH-соединение в окне настройки. По завершении вы сможете выбрать рабочую область на боковой панели.",
+    "Open System Browser": "Открыть системный браузер",
     "Open System Preferences": "Открыть системные настройки",
     "Open the agent panel on window reload": "Открывать панель агента при перезагрузке окна",
     "Open URL": "Открыть URL-адрес",
     "Open with External Browser": "Открыть с помощью внешнего браузера",
     "Open Workspace": "Открыть пространство",
     "Open Workspace Selector": "Выбор рабочей области",
+    "Opened URL in Browser": "URL открыт в браузере",
+    "Opening URL in Browser": "Открытие URL в браузере...",
     "Opens in the in-app preview pane. Some sites don't support iframe embedding and may not load.": "Открывается на панели предварительного просмотра в приложении. Некоторые сайты не поддерживают встраивание iframe и могут не загружаться.",
     "Operating System": "Операционная система",
     "Opt-out": "Отказ от участия",
@@ -1377,6 +1474,7 @@
     "Pro": "Профессиональный",
     "Proceed": "Продолжить",
     "Proceed Anyway": "Все равно продолжить",
+    "Proceed in Sandbox": "Продолжить в песочнице",
     "Proceed with": "Продолжить",
     "Proceed with Plan": "Выполнить план",
     "Proceeded with": "Продолжил выполнение",
@@ -1392,6 +1490,7 @@
     "Projects": "Проекты",
     "Prompt": "Подскажите",
     "Prompt and tools metadata for this invocation has been cleared to save space. Full details are only preserved for the latest invocation.": "Метаданные подсказки и инструментов для этого вызова были удалены для экономии места. Полная информация сохраняется только для последнего вызова.",
+    "Prompt for approval before running browser scripts.": "Запрашивать подтверждение перед запуском скриптов в браузере.",
     "Prompt to execute on schedule...": "Промпт для выполнения по расписанию...",
     "Prompt too simple": "Подскажите слишком просто",
     "Provide Feedback": "Оставить отзыв",
@@ -1413,19 +1512,24 @@
     "Quota": "Квота",
     "Quote": "Цитата",
     "Quote Selection": "Цитировать выделенное",
-    "Ran": "Запуск",
+    "Ran": "Выполнено",
     "reactTooltipCorearrow": "РеакцияTooltipCorearrow",
     "reactTooltipCorecontent": "реакцияTooltipCorecontent",
-    "Read": "Читать",
+    "Read": "Прочитано",
     "Read access": "Доступ для чтения",
     "Read access to code, refs, commits, and other repository contents.": "Доступ для чтения к коду, ссылкам, коммитам и другому содержимому репозитория.",
+    "Read Browser Page in Browser": "Страница прочитана в браузере",
     "Read Files": "Чтение файлов",
     "Read Only": "Только чтение",
+    "Read page": "Страница прочитана",
     "Read resource:": "Прочтите ресурс:",
     "Read URL": "Читать URL",
     "Read URL content?": "Читать содержимое URL?",
     "Read URL rejected": "URL-адрес чтения отклонен",
     "Read URLs": "Чтение URL-адресов",
+    "Reading": "Чтение...",
+    "Reading Browser Page in Browser": "Чтение страницы в браузере...",
+    "Reading page": "Чтение страницы...",
     "Ready": "Готов",
     "Recent": "Недавние",
     "Recent Conversations": "Недавние диалоги",
@@ -1443,6 +1547,8 @@
     "Refresh MCP servers": "Обновить серверы MCP",
     "Refresh quota and credits data": "Обновить данные о квоте и кредитах",
     "Refresh skills paths": "Обновить пути навыков",
+    "Refreshed Browser page": "Страница браузера обновлена",
+    "Refreshing Browser page": "Обновление страницы браузера...",
     "Regroup Google3 Chats": "Перегруппировка чатов Google3",
     "Reject": "Отклонить",
     "Reject All": "Отклонить все",
@@ -1470,6 +1576,7 @@
     "Request Review": "Запрашивать проверку",
     "Request review": "Запрашивать проверку",
     "Require approval": "Требовать подтверждения",
+    "Require Review": "Требовать проверку",
     "Requires manual review for all terminal commands and file accesses outside of the working folders.": "Запрос подтверждения для всех команд и доступа к файлам вне рабочих папок.",
     "Rerun": "Перезапустить",
     "Research Agent": "Исследовательский агент",
@@ -1478,6 +1585,8 @@
     "Reset Onboarding": "Сбросить настройку",
     "Reset State": "Сбросить состояние",
     "Reset Zoom": "Сбросить масштаб",
+    "Resized Browser window": "Размер окна браузера изменен",
+    "Resizing Browser window": "Изменение размера окна браузера...",
     "Response": "Ответ",
     "Restart": "Перезапустить",
     "Restart Main Language Server": "Перезапустить языковой сервер",
@@ -1486,19 +1595,24 @@
     "Restricted": "Ограниченный",
     "Restricts agent tools to a secure, isolated local sandbox.": "Ограничивает инструменты агента изолированной локальной песочницей.",
     "Resume": "Возобновить",
+    "Retrieved Browser Pages": "Страницы браузера получены",
+    "Retrieved Console Logs from Browser": "Логи консоли браузера получены",
+    "Retrieving Browser Pages": "Получение страниц браузера...",
+    "Retrieving Console Logs from Browser": "Получение логов консоли браузера...",
     "Retry": "Повторить",
     "Revert and redo turn, best of N:": "Вернуть и повторить ход, лучший из N:",
     "Review": "Проверка",
     "Review changes": "Просмотр изменений",
     "Review Changes": "Обзор изменений",
     "Review pending conversations": "Просмотр ожидающих разговоров",
+    "Review Permissions": "Проверить разрешения",
     "Review Policy": "Политика проверки",
     "Review required": "Требуется проверка",
     "Review tab": "Вкладка «Проверка»",
     "Root Conversation": "Корневой разговор",
     "Rule": "Правило",
     "Rules": "Правила",
-    "Run": "Запустить",
+    "Run": "Запуск",
     "Run (unsandboxed)": "Запустить (без песочницы)",
     "Run command": "Выполнить команду",
     "Run in a new worktree": "Запуск в новом рабочем дереве",
@@ -1509,7 +1623,7 @@
     "Run the command in your workstation terminal, then reload this page:": "Запустите команду в терминале вашей рабочей станции, затем перезагрузите эту страницу:",
     "Run visibility": "Видимость запуска",
     "run_command or view_file": "команда_запуска или файл_просмотра",
-    "Running": "Выполняется",
+    "Running": "Выполняется...",
     "Running agents": "Запущенные агенты",
     "Running command": "Выполнение команды",
     "Running Tasks": "Запущенные задачи",
@@ -1523,6 +1637,8 @@
     "Save as...": "Сохранить как...",
     "Save Changes": "Сохранить изменения",
     "Save changes": "Сохранить изменения",
+    "Save Comment": "Сохранить комментарий",
+    "Save Configuration": "Сохранить конфигурацию",
     "Saves to your global ~/.gemini/antigravity/agents/ directory. This script will be available across all your workspaces.": "Сохраняется в вашем глобальном каталоге ~/.gemini/antigravity/agents/. Этот скрипт будет доступен во всех ваших рабочих областях.",
     "Scan the code to open this device in Remote Control, or": "Отсканируйте код, чтобы открыть это устройство в Дистанционном управлении, или",
     "Scanning skills config file...": "Конфигурационный файл навыков сканирования...",
@@ -1534,6 +1650,12 @@
     "Screen Recording": "Запись экрана",
     "Screenshot": "Скриншот",
     "Screenshot must be under 10 MB": "Размер скриншота не должен превышать 10 МБ",
+    "Scrolled down in Browser": "Прокручено вниз в браузере",
+    "Scrolled in Browser": "Прокручено в браузере",
+    "Scrolled up in Browser": "Прокручено вверх в браузере",
+    "Scrolling down in Browser": "Прокрутка вниз в браузере...",
+    "Scrolling in Browser": "Прокрутка в браузере...",
+    "Scrolling up in Browser": "Прокрутка вверх в браузере...",
     "Search": "Поиск",
     "Search across files...": "Поиск по файлам...",
     "Search all convos...": "Поиск по всем диалогам...",
@@ -1545,13 +1667,17 @@
     "Search conversations (by name or Cascade ID)": "Поиск разговоров (по имени или Cascade ID)",
     "Search conversations...": "Поиск диалогов...",
     "Search customizations...": "Поиск настроек...",
+    "Search files...": "Поиск файлов...",
     "Search flags": "Поиск флагов",
+    "Search for files in the project...": "Поиск файлов в проекте...",
     "Search for MCP servers to add to your configuration": "Поиск серверов MCP для добавления в конфигурацию",
     "Search GoB repositories...": "Поиск в репозиториях GoB...",
     "Search MCP servers by name": "Поиск серверов MCP по имени",
     "Search metrics...": "Показатели поиска...",
+    "Search past workspaces...": "Поиск прошлых рабочих пространств...",
     "Search plugins...": "Поиск плагинов...",
     "Search projects...": "Поиск проектов...",
+    "Search Recents": "Поиск недавних",
     "Search settings...": "Поиск настроек...",
     "Search skills": "Поиск навыков",
     "Search skills...": "Поиск навыков...",
@@ -1560,6 +1686,11 @@
     "Search tasks...": "Поиск задач...",
     "Search workspaces...": "Поиск рабочих областей...",
     "Search...": "Поиск...",
+    "Searched": "Найдено",
+    "Searched files": "Поиск файлов завершен",
+    "Searched for files": "Поиск файлов завершен",
+    "Searched web": "Поиск в интернете завершен",
+    "Searching": "Поиск...",
     "Searching Agent Market...": "Поиск агентского рынка...",
     "Searching...": "Поиск...",
     "Searching\\u2026": "Поиск\\u2026",
@@ -1573,10 +1704,13 @@
     "See Plans": "Посмотреть планы",
     "Segment Metrics": "Метрики сегмента",
     "select": "выбрать",
+    "Select a folder to create a new project.": "Выберите папку для создания нового проекта.",
     "Select a step in the timeline to inspect": "Выберите шаг на временной шкале для проверки",
     "Select Agent": "Выбор агента",
     "Select agent": "Выбор агента",
     "Select All": "Выделить всё",
+    "Select an option": "Выберите вариант",
+    "Select an option...": "Выберите вариант...",
     "Select another model": "Выбрать другую модель",
     "Select Antigravity Theme": "Выберите тему Antigravity",
     "Select Antigravityru Theme": "Выберите тему Antigravity",
@@ -1602,10 +1736,13 @@
     "Select workspace": "Выберите рабочую область",
     "Select Worktree": "Выберите рабочее дерево",
     "Select your license": "Выберите вашу лицензию",
+    "Selected Option in Browser": "Параметр выбран в браузере",
+    "Selecting Option in Browser": "Выбор параметра в браузере...",
     "Selection Actions": "Действия выбора",
     "Send": "Отправить",
     "Send a message...": "Отправить сообщение...",
     "Send Feedback": "Отправить отзыв",
+    "Send feedback": "Отправить отзыв",
     "Send Immediately": "Отправлять сразу",
     "Send Message": "Отправить сообщение",
     "Send message": "Отправить сообщение",
@@ -1618,6 +1755,7 @@
     "Set the speed of tab suggestions": "Скорость появления подсказок Tab",
     "Settings": "Настройки",
     "Settings -": "Настройки -",
+    "Settings - ": "Настройки — ",
     "Setup": "Настройка",
     "Setup may take over 5 minutes. Please keep this screen open during setup.": "Установка может занять более 5 минут. Пожалуйста, держите этот экран открытым во время установки.",
     "Setup script failed.": "Сценарий установки не выполнен.",
@@ -1632,11 +1770,13 @@
     "Show all": "Показать все",
     "Show browser notifications when your action is needed or execution finishes.": "Показывать системные уведомления, когда требуется действие или задача завершена.",
     "Show diff": "Показать различия",
+    "Show Error": "Показать ошибку",
     "Show more": "Показать больше",
     "Show more results": "Показать больше результатов",
     "Show output": "Показать вывод",
     "Show reasoning": "Показать рассуждения",
     "Show Selection Actions": "Действия с выделенным текстом",
+    "Show settings anyway": "Все равно показать настройки",
     "Show suggestions when typing in the editor": "Показывать подсказки при вводе текста в редакторе",
     "Side Question:": "Дополнительный вопрос:",
     "Side-by-Side": "Рядом",
@@ -1646,6 +1786,7 @@
     "Sidebar grouped by workspace": "Группировка по пространствам",
     "Sidebar Updates": "Обновления боковой панели",
     "Sidecar feature is not available.": "Функция коляски недоступна.",
+    "Sidecar View": "Вид сайдкара",
     "Sign In": "Войти",
     "Sign in": "Войти",
     "Sign in again": "Войти снова",
@@ -1660,6 +1801,8 @@
     "Simulate a different host (Electron, desktop or mobile Web, Extension, or remote control).": "Симуляция другого хоста (Electron, Web, расширение, Remote Control).",
     "Simulate a different user cohort (Google, External, Enterprise).": "Симуляция группы пользователей (Google, Внешние, Enterprise).",
     "Simulate running on a different OS.": "Симуляция работы в другой ОС.",
+    "Simulated Key Press in Browser": "Нажатие клавиши сымитировано",
+    "Simulating Key Press in Browser": "Имитация нажатия клавиши в браузере...",
     "Skill": "Навык",
     "Skill Custom Paths": "Пользовательские пути навыков",
     "Skill Details": "Сведения о навыке",
@@ -1671,6 +1814,7 @@
     "Skills Configuration Error:": "Ошибка настройки навыков:",
     "Skip": "Пропустить",
     "Skipping...": "Пропуск...",
+    "Smart": "Умный",
     "Some non-image binary content was truncated.": "Некоторый двоичный контент, не являющийся изображением, был обрезан.",
     "Something went wrong": "Что-то пошло не так",
     "Something went wrong!": "Что-то пошло не так!",
@@ -1681,6 +1825,7 @@
     "Sources": "Источники",
     "Specifies Agent's behavior when asking for review on artifacts, which are documents it creates to enable a richer conversation experience.": "Определяет поведение агента при запросе проверки артефактов.",
     "Specifies the agent's behavior when asking for review on artifacts, which are documents it creates to enable a richer conversation experience.": "Определяет поведение агента при запросе проверки артефактов.",
+    "Speed": "Скорость",
     "Split": "Сплит",
     "Split Conversation Horizontally": "Разделить диалог по горизонтали",
     "Split Conversation Vertically": "Разделить диалог по вертикали",
@@ -1691,8 +1836,8 @@
     "Stacked": "Сложенный",
     "Stacked layout": "Вертикальный вид (друг под другом)",
     "Stage change": "Индексировать изменение",
-    "Staged Changes": "Поэтапные изменения",
-    "Staged index changes and working tree changes": "Проиндексированные и рабочие изменения",
+    "Staged Changes": "Подготовленные изменения",
+    "Staged index changes and working tree changes": "Изменения индекса и рабочей копии",
     "Standalone": "Автономный",
     "Standalone Conversations": "Отдельные диалоги",
     "Standalone Terminals": "Отдельные терминалы",
@@ -1750,13 +1895,14 @@
     "System Prompt": "Системный промпт",
     "System Prompt Sections (": "Разделы системных подсказок (",
     "System Theme": "Системная тема",
-    "Tab": "Таб",
+    "Tab": "Вкладки",
     "Tab Gitignore Access": "Доступ Tab к .gitignore",
     "Tab Speed": "Скорость подсказок Tab",
     "Tab to Import": "Импорт по Tab",
     "Tab to Jump": "Переход по Tab",
     "Table of contents": "Оглавление",
     "Taking longer than usual to load": "Загрузка занимает больше времени, чем обычно",
+    "Taking Screenshot": "Создание скриншота...",
     "Task": "Задача",
     "task": "задача",
     "Task Logs": "Журналы задач",
@@ -1780,11 +1926,17 @@
     "Terms and Privacy:": "Условия и конфиденциальность:",
     "Terms of Service": "Условия использования",
     "Terms of Service & Data Use": "Условия обслуживания и использование данных",
+    "Tested": "Протестировано",
+    "Testing": "Тестирование...",
     "Thank you! \\u2764\\ufe0f": "Спасибо! \\u2764\\ufe0f",
     "Thank you! Your feedback has been submitted successfully.": "Спасибо! Ваш отзыв успешно отправлен.",
+    "Thanks for your feedback!": "Спасибо за ваш отзыв!",
+    "The agent always asks for review.": "Агент всегда запрашивает проверку.",
     "The agent asks for permission before executing commands matched by a deny list entry.": "Агент запрашивает подтверждение перед выполнением команд из списка запрета.",
     "The Agent attempted to interact with some sites that are not allowlisted": "Агент попытался взаимодействовать с некоторыми сайтами, которые не занесены в белый список.",
     "The agent auto-executes commands matched by an allow list entry.": "Агент автоматически выполняет команды из списка разрешений.",
+    "The agent has encountered an internal error.": "Агент столкнулся с внутренней ошибкой.",
+    "The agent is waiting for your input.": "Агент ожидает вашего ввода.",
     "The agent was prevented from accessing some sites": "Агенту закрыт доступ к некоторым сайтам",
     "The agent will wait for you to install the browser extension.": "Агент будет ждать, пока вы установите расширение для браузера.",
     "The agent works with autonomy-enhancing features, and does not ask questions or request new permissions.": "Агент работает с функциями повышения автономности и не задает вопросы и не запрашивает новые разрешения.",
@@ -1823,8 +1975,11 @@
     "This project was created for": "Этот проект создан для",
     "This prompt is straightforward and does not need alternative comparisons.": "Эта подсказка проста и не требует альтернативных сравнений.",
     "This request is not well-suited for parallel Best-of-N generation.": "Этот запрос не очень подходит для параллельной генерации Best-of-N.",
+    "This setting cannot be changed while strict mode is enabled.": "Этот параметр нельзя изменить при включенном строгом режиме.",
+    "This setting is managed by your organization.": "Этот параметр управляется вашей организацией.",
     "This sidecar runs from a path that is not officially supported. Make sure your code is in a trusted location in google3.": "Эта коляска движется по пути, который официально не поддерживается. Убедитесь, что ваш код находится в надежном месте в google3.",
     "This sign-in option is only available to invited teams.": "Этот вариант входа доступен только приглашенным командам.",
+    "This skill is installed in your workspace": "Этот навык установлен в вашем рабочем пространстве",
     "This step is not associated with an invocation.": "Этот шаг не связан с вызовом.",
     "This step is visible in the standard conversation view, but was excluded from the messages sent to the model.": "Этот шаг виден в стандартном представлении беседы, но исключен из сообщений, отправляемых модели.",
     "This step's invocation metadata is not available (pruned to save": "Метаданные вызова этого шага недоступны (обрезаны для сохранения",
@@ -1833,6 +1988,7 @@
     "This will permanently delete": "Это приведет к удалению навсегда",
     "This will permanently delete ": "Будет безвозвратно удалено ",
     "This workspace adds no customizations of its own.": "Это рабочее пространство не добавляет собственных настроек.",
+    "Thorough research": "Глубокое исследование",
     "Thought Process": "Ход размышлений",
     "Thought process": "Ход размышлений",
     "Thursday": "Четверг",
@@ -1880,6 +2036,7 @@
     "tokens)": "токенов)",
     "Tokens:": "Токены:",
     "Too many surveys": "Слишком много опросов",
+    "Took Screenshot": "Скриншот создан",
     "TOOL": "ИНСТРУМЕНТ",
     "Tool": "Инструмент",
     "Tool arguments": "Аргументы инструмента",
@@ -1903,7 +2060,7 @@
     "Trigger multiple response variants from the same prompt.": "Запускайте несколько вариантов ответа из одного и того же приглашения.",
     "Triggered": "Сработало",
     "troubleshooting guide": "руководство по устранению неполадок",
-    "True changes vs the parent workspace": "Истинные изменения по сравнению с родительской рабочей областью",
+    "True changes vs the parent workspace": "Фактические изменения относительно родительского рабочего пространства",
     "Trust the input, enabling all HTML features such as \\\\url.": "Доверьтесь вводу, включив все функции HTML, такие как \\url.",
     "Try Again": "Попробовать снова",
     "Try again": "Повторить попытку",
@@ -1920,6 +2077,8 @@
     "Type to search for code across your workspace.": "Введите для поиска кода в вашем рабочем пространстве.",
     "Type to search...": "Введите для поиска...",
     "Typeahead menu": "Меню автодополнения",
+    "Typed into Browser": "Текст введен в браузере",
+    "Typing into Browser": "Ввод текста в браузере...",
     "UI Actions": "Действия пользовательского интерфейса",
     "UI Extensions": "Расширения пользовательского интерфейса",
     "UI extensions": "Расширения пользовательского интерфейса",
@@ -1928,12 +2087,14 @@
     "UI view does not exist.": "Представление пользовательского интерфейса не существует.",
     "UI Плагины": "Пользовательский интерфейс Плагины",
     "Unable to resolve audio source URL": "Невозможно разрешить URL-адрес источника аудио.",
-    "Uncommitted": "Незафиксированные",
+    "Uncommitted": "Незакоммиченные",
     "Undo": "Отменить",
     "Undo changes up to this point": "Откатить изменения до этой точки",
     "United States": "Соединенные Штаты",
     "UNKNOWN": "НЕИЗВЕСТНО",
     "Unknown": "Неизвестно",
+    "Unknown edit": "Неизвестное изменение",
+    "Unknown file edit": "Неизвестное изменение файла",
     "Unknown Notebook": "Неизвестный блокнот",
     "Unstage change": "Убрать из индекса",
     "Untracked (Unstaged)": "Без отслеживания (без постановки)",
@@ -1955,6 +2116,7 @@
     "URLs the agent can read or open in this workspace.": "URL, доступные для чтения в этом пространстве.",
     "Usage": "Использование",
     "Use": "Использование",
+    "Use Add MCP to browse the store.": "Используйте «Добавить MCP» для перехода в каталог.",
     "Use advanced SSO config": "Использовать расширенную конфигурацию единого входа",
     "Use business account": "Использовать рабочий аккаунт",
     "Use full Git clones for Best of N": "Используйте полные клоны Git для Best of N",
@@ -1983,21 +2145,29 @@
     "Vetted (beta)": "Проверено (бета)",
     "View": "Вид",
     "View child subagents": "Просмотр дочерних субагентов",
+    "View comments": "Просмотр комментариев",
     "View could not be opened": "Не удалось открыть просмотр",
     "View Debug": "Просмотр отладки",
     "View details": "Подробнее",
+    "View Diff": "Просмотр изменений",
+    "View documentation": "Просмотр документации",
     "view full search results": "просмотреть полные результаты поиска",
     "View Installed": "Посмотреть установленные",
+    "View Logs": "Просмотр логов",
     "View MCP settings": "Просмотр настроек MCP",
     "View network request": "Посмотреть сетевой запрос",
     "View network requests": "Просмотр сетевых запросов",
     "View Page": "Просмотреть страницу",
     "View plans": "Посмотреть тарифы",
-    "View Usage": "Просмотр использования",
+    "View Split Diff": "Раздельный просмотр изменений",
+    "View Stacked Diff": "Объединенный просмотр изменений",
+    "View Usage": "Посмотреть использование",
     "view_file read_resource write_to_file replace_file_content multi_replace_file_content sed_file notebook_edit": "view_file read_resource write_to_file replace_file_content multi_replace_file_content sed_file Notebook_edit",
+    "Viewing Diff": "Просмотр изменений",
     "Wait for": "Подождите",
     "Waiting": "Ожидание",
     "Waiting for user input": "Ожидание ввода пользователя",
+    "Waiting for your input": "Ожидание вашего ввода",
     "Walkthrough": "Отчёт о работе",
     "Want to re-group your old conversations by workspace? They can be": "Хотите перегруппировать старые разговоры по рабочей области? Они могут быть",
     "Warning": "Предупреждение",
@@ -2020,6 +2190,7 @@
     "Welcome to ": "Добро пожаловать в ",
     "Welcome to Cider with Jetski": "Добро пожаловать в Сидр с Jetski",
     "Welcome to the Concierge": "Добро пожаловать в консьерж",
+    "What did you like about this response?": "Что вам понравилось в этом ответе?",
     "What is missing in your workflow": "Чего не хватает в вашем рабочем процессе",
     "What quota or feature is being incorrectly limited": "Какая квота или функция ограничены неправильно",
     "What the step bars are coloured by": "Как окрашены ступеньки",
@@ -2167,7 +2338,8 @@
   }
 
   // Полнотекстовый перевод с сохранением Markdown-блоков кода
-  async function translateLiveText(fullText) {
+  window.__ag_translateLiveText = async function translateLiveText(fullText) {
+    window.__ag_fullTextCache = fullTextCache;
     if (!fullText || typeof fullText !== 'string') return fullText;
     if (fullTextCache.has(fullText)) return fullTextCache.get(fullText);
     if (inFlightRequests.has(fullText)) return inFlightRequests.get(fullText);
@@ -2232,30 +2404,70 @@
     }
   }
 
-  // Хелпер для перевода заголовков блоков действий
+  // Хелпер для перевода заголовков блоков действий и навигации
   window.__ag_trH = function (s) {
     if (typeof s !== 'string') return s;
     var trimmed = s.trim();
+    if (DICT[trimmed]) return DICT[trimmed];
     if (trimmed === 'Working' || trimmed === 'working') return 'Работает';
     if (trimmed === 'Working...' || trimmed === 'working...') return 'Работает...';
     if (trimmed === 'Compacting' || trimmed === 'Compacting...') return 'Сжатие...';
     if (trimmed === 'Thought Process' || trimmed === 'Thought process') return 'Ход размышлений';
     if (trimmed === 'Thinking...') return 'Размышляет...';
-    if (DICT[trimmed]) return DICT[trimmed];
+    if (trimmed === 'Analyzed') return 'Проанализировано';
+    if (trimmed === 'Analyzing') return 'Анализ...';
+    if (trimmed === 'Read') return 'Прочитано';
+    if (trimmed === 'Reading') return 'Чтение...';
+    if (trimmed === 'Edited') return 'Отредактировано';
+    if (trimmed === 'Editing') return 'Редактирование...';
+    if (trimmed === 'Executed') return 'Выполнено';
+    if (trimmed === 'Executing') return 'Выполнение...';
+    if (trimmed === 'Searched') return 'Найдено';
+    if (trimmed === 'Searching') return 'Поиск...';
+    if (trimmed === 'Tested') return 'Протестировано';
+    if (trimmed === 'Testing') return 'Тестирование...';
+    if (trimmed === 'Built') return 'Собрано';
+    if (trimmed === 'Building') return 'Сборка...';
+    if (trimmed === 'Ran') return 'Выполнено';
+    if (trimmed === 'Running') return 'Выполняется...';
+    if (trimmed === 'Asked') return 'Запрошено';
+    if (trimmed === 'Asking') return 'Запрос...';
+    if (trimmed === 'General') return 'Общие';
+    if (trimmed === 'Appearance') return 'Внешний вид';
+    if (trimmed === 'Models') return 'Модели';
+    if (trimmed === 'Customizations') return 'Настройки агента';
+    if (trimmed === 'Shortcuts') return 'Горячие клавиши';
+    if (trimmed === 'Provide Feedback') return 'Оставить отзыв';
+    if (trimmed === 'Browser') return 'Браузер';
+    if (trimmed === 'Notifications') return 'Уведомления';
+    if (trimmed === 'Editor') return 'Редактор';
+    if (trimmed === 'Tab') return 'Вкладки';
+    if (trimmed === 'Account') return 'Аккаунт';
+    if (trimmed === 'Developer') return 'Для разработчиков';
+    if (trimmed === 'Labs') return 'Лаборатория';
+    if (trimmed === 'Best of N') return 'Лучший из N';
+    if (trimmed === 'Workspaces') return 'Рабочие пространства';
+    if (trimmed === 'Settings') return 'Настройки';
 
-    return s.replace(/Worked for (\d+)s/gi, 'Работал $1 с')
-            .replace(/Worked for (\d+)m/gi, 'Работал $1 мин')
-            .replace(/Worked for (\d+)h/gi, 'Работал $1 ч')
-            .replace(/Thinking for (\d+)s/gi, 'Размышлял $1 с')
-            .replace(/Thinking for (\d+)m/gi, 'Размышлял $1 мин')
-            .replace(/Thinking for (\d+)h/gi, 'Размышлял $1 ч')
-            .replace(/Thought for (\d+)s/gi, 'Размышлял $1 с')
-            .replace(/Thought for (\d+)m/gi, 'Размышлял $1 мин')
-            .replace(/Thought for (\d+)h/gi, 'Размышлял $1 ч')
-            .replace(/Ran for (\d+)s/gi, 'Выполнялся $1 с')
-            .replace(/Ran for (\d+)m/gi, 'Выполнялся $1 мин')
-            .replace(/Ran for (\d+)h/gi, 'Выполнялся $1 ч')
-            .replace(/Thought Process/gi, 'Ход размышлений');
+    var res = s.replace(/Worked for (\d+)s/gi, 'Работал $1 с')
+               .replace(/Worked for (\d+)m/gi, 'Работал $1 мин')
+               .replace(/Worked for (\d+)h/gi, 'Работал $1 ч')
+               .replace(/Thinking for (\d+)s/gi, 'Размышлял $1 с')
+               .replace(/Thinking for (\d+)m/gi, 'Размышлял $1 мин')
+               .replace(/Thinking for (\d+)h/gi, 'Размышлял $1 ч')
+               .replace(/Thought for (\d+)s/gi, 'Размышлял $1 с')
+               .replace(/Thought for (\d+)m/gi, 'Размышлял $1 мин')
+               .replace(/Thought for (\d+)h/gi, 'Размышлял $1 ч')
+               .replace(/Ran for (\d+)s/gi, 'Выполнялся $1 с')
+               .replace(/Ran for (\d+)m/gi, 'Выполнялся $1 мин')
+               .replace(/Ran for (\d+)h/gi, 'Выполнялся $1 ч')
+               .replace(/Thought Process/gi, 'Ход размышлений')
+               .replace(/^Clicking element "(.+?)"/i, 'Клик по элементу "$1"')
+               .replace(/^Clicked element "(.+?)"/i, 'Кликнут элемент "$1"')
+               .replace(/^Searching Moma for/i, 'Поиск в Moma для')
+               .replace(/^Searched Moma for/i, 'Поиск в Moma завершен для')
+               .replace(/^Error while running:\s*(.*)/i, 'Ошибка при выполнении: $1');
+    return res;
   };
 
   // React-компонент, встраиваемый непосредственно в рендерер kib внутри main.js
@@ -2561,6 +2773,180 @@
       });
     });
   }
+
+  
+  // --- КОМПОНЕНТ ПЕРЕВОДА ОТВЕТОВ ИИ (AI ASSISTANT RESPONSE TRANSLATOR) ---
+  const STORAGE_KEY_RESP_AUTO = 'ag_response_auto_translate';
+  const STORAGE_KEY_RESP_VIEW = 'ag_response_view_lang';
+
+  window.__ag_renderResponse = function (props) {
+    const { React, MarkdownRenderer, text, isDone, animate, stepIndex, extraChild } = props;
+
+    if (!window.__AgResponseWrapper) {
+      window.__AgResponseWrapper = function ResponseWrapper(p) {
+        const { React, MarkdownRenderer, text, isDone, animate, extraChild } = p;
+
+        const [autoTranslate, setAutoTranslate] = React.useState(() => {
+          const saved = localStorage.getItem(STORAGE_KEY_RESP_AUTO);
+          return saved === null ? true : saved !== 'false';
+        });
+
+        const [viewLang, setViewLang] = React.useState(() => {
+          return localStorage.getItem(STORAGE_KEY_RESP_VIEW) || 'ru';
+        });
+
+        const [translatedText, setTranslatedText] = React.useState(() => {
+          if (!text) return '';
+          if (window.__ag_fullTextCache && window.__ag_fullTextCache.has(text)) {
+            return window.__ag_fullTextCache.get(text);
+          }
+          return '';
+        });
+
+        const [isTranslating, setIsTranslating] = React.useState(false);
+
+        // Проверяем, на русском ли уже текст ответа
+        const isRussian = React.useMemo(() => {
+          if (!text) return true;
+          const clean = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '').trim();
+          if (!clean) return true;
+          const ru = (clean.match(/[а-яА-ЯёЁ]/g) || []).length;
+          const en = (clean.match(/[a-zA-Z]/g) || []).length;
+          return (ru > 10 && ru > en * 0.35) || (ru > 5 && en < 5);
+        }, [text]);
+
+        // Автоперевод при получении текста ответа
+        React.useEffect(() => {
+          if (isRussian) return;
+          if (!text || !text.trim()) return;
+
+          if (window.__ag_fullTextCache && window.__ag_fullTextCache.has(text)) {
+            setTranslatedText(window.__ag_fullTextCache.get(text));
+            return;
+          }
+
+          if (!autoTranslate && viewLang !== 'ru') {
+            return;
+          }
+
+          // Переводим когда шаг завершен (isDone) либо если это шаг из истории
+          if (!isDone) return;
+
+          let active = true;
+          setIsTranslating(true);
+          if (window.__ag_translateLiveText) {
+            window.__ag_translateLiveText(text).then(res => {
+              if (active && res && res !== text && /[а-яА-ЯёЁ]/.test(res)) {
+                setTranslatedText(res);
+              }
+            }).catch(err => {
+              console.warn('[i18n-resp]', err);
+            }).finally(() => {
+              if (active) setIsTranslating(false);
+            });
+          }
+
+          return () => { active = false; };
+        }, [text, isDone, autoTranslate, isRussian, viewLang]);
+
+        const handleManualTranslate = (e) => {
+          e.stopPropagation();
+          if (isTranslating) return;
+
+          if (translatedText) {
+            const next = viewLang === 'ru' ? 'en' : 'ru';
+            setViewLang(next);
+            localStorage.setItem(STORAGE_KEY_RESP_VIEW, next);
+          } else if (window.__ag_translateLiveText) {
+            setIsTranslating(true);
+            window.__ag_translateLiveText(text).then(res => {
+              if (res && res !== text && /[а-яА-ЯёЁ]/.test(res)) {
+                setTranslatedText(res);
+                setViewLang('ru');
+                localStorage.setItem(STORAGE_KEY_RESP_VIEW, 'ru');
+              }
+            }).catch(err => {
+              console.warn('[i18n-resp manual]', err);
+            }).finally(() => {
+              setIsTranslating(false);
+            });
+          }
+        };
+
+        const handleToggleAuto = (e) => {
+          e.stopPropagation();
+          const next = !autoTranslate;
+          setAutoTranslate(next);
+          localStorage.setItem(STORAGE_KEY_RESP_AUTO, next ? 'true' : 'false');
+          if (next && !translatedText && window.__ag_translateLiveText) {
+            setIsTranslating(true);
+            window.__ag_translateLiveText(text).then(res => {
+              if (res && res !== text && /[а-яА-ЯёЁ]/.test(res)) {
+                setTranslatedText(res);
+                setViewLang('ru');
+              }
+            }).finally(() => setIsTranslating(false));
+          }
+        };
+
+        const showingRu = (!isRussian && viewLang === 'ru' && !!translatedText);
+        const textToRender = showingRu ? translatedText : text;
+
+        return React.createElement("div", {
+          className: "relative group/ag-resp px-2 py-1",
+          "data-testid": "planner-response-text"
+        },
+          !isRussian && React.createElement("div", {
+            className: "flex items-center justify-end gap-1.5 mb-1 opacity-70 hover:opacity-100 transition-opacity select-none text-[11px] text-muted-foreground",
+            style: { fontFamily: "system-ui, sans-serif" }
+          },
+            React.createElement("button", {
+              type: "button",
+              onClick: handleToggleAuto,
+              title: autoTranslate ? "Автоперевод ответов ИИ включен. Кликните для выключения" : "Включить автоматический перевод ответов ИИ на русский",
+              className: `px-1.5 py-0.5 rounded border text-[10px] font-medium cursor-pointer transition-colors ${
+                autoTranslate 
+                  ? "bg-primary/10 border-primary/40 text-primary" 
+                  : "bg-muted/40 border-border text-muted-foreground hover:bg-secondary"
+              }`
+            }, autoTranslate ? "⚡ Авто: ВКЛ" : "⚡ Авто: ВЫКЛ"),
+
+            React.createElement("button", {
+              type: "button",
+              onClick: handleManualTranslate,
+              disabled: isTranslating,
+              title: showingRu ? "Показан русский перевод. Кликните для просмотра оригинала на английском" : "Перевести ответ на русский язык (код и форматирование сохраняются)",
+              className: `flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] font-medium cursor-pointer transition-colors ${
+                showingRu
+                  ? "bg-primary text-primary-foreground border-transparent shadow-xs"
+                  : "bg-muted/60 border-border hover:bg-secondary text-foreground"
+              }`
+            },
+              isTranslating 
+                ? "⏳ Перевод..." 
+                : showingRu 
+                  ? "🌐 RU (Показать оригинал)" 
+                  : "🌐 Перевести на русский"
+            )
+          ),
+          React.createElement(MarkdownRenderer, {
+            animate: animate && !showingRu
+          }, textToRender),
+          extraChild || null
+        );
+      };
+    }
+
+    return React.createElement(window.__AgResponseWrapper, {
+      React,
+      MarkdownRenderer,
+      text,
+      isDone,
+      animate,
+      stepIndex,
+      extraChild
+    });
+  };
 
   console.log('[i18n-ru] Antigravity 2.0 Russian Localization & On-The-Fly Thought Translator fully active');
 })();
