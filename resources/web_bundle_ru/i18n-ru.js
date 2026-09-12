@@ -8,6 +8,133 @@
   'use strict';
 
   const DICT = {
+  "Background Task Output": "Вывод фоновой задачи",
+  "Proceeded with": "Продолжил выполнение",
+  "Proceed with": "Продолжить",
+  "Select Agent": "Выбор агента",
+  "Select agent": "Выбор агента",
+  "Main Agent": "Основной агент",
+  "main agent": "основной агент",
+  "Running...": "Выполняется...",
+  "Running": "Выполняется",
+  "Completed": "Завершено",
+  "Failed": "Ошибка",
+  "Success": "Успех",
+  "Thought Process": "Ход размышлений",
+  "Thought process": "Ход размышлений",
+  "Thinking...": "Размышляет...",
+  "Agent thinking": "Агент размышляет",
+  "Agent completed": "Агент завершил задачу",
+  "Main Agent": "Основной агент",
+  "main agent": "основной агент",
+  "Select Agent": "Выбор агента",
+  "Select agent": "Выбор агента",
+  "Current Agent": "Текущий агент",
+  "Active Agent": "Активный агент",
+  "Subagents": "Подагенты",
+  "Subagent": "Подагент",
+  "Agent": "Агент",
+  "Agents": "Агенты",
+  "Research Agent": "Исследовательский агент",
+  "Codebase Researcher": "Исследователь кодовой базы",
+  "A subagent with read-only tools to explore the codebase": "Подагент только для чтения для изучения кодовой базы",
+  "Subagent that inherits the parent agent's full configuration": "Подагент, наследующий полную конфигурацию родительского агента",
+  "Appearance": "Внешний вид",
+  "Configure the agent's visual theme and display preferences.": "Настройка визуальной темы агента и параметров отображения.",
+  "Theme": "Тема",
+  "Light Theme": "Светлая тема",
+  "Dark Theme": "Тёмная тема",
+  "System Theme": "Системная тема",
+  "Density": "Плотность",
+  "Compact": "Компактный",
+  "Comfortable": "Комфортный",
+  "Font Size": "Размер шрифта",
+  "Font Family": "Семейство шрифтов",
+  "Terminal Commands": "Команды терминала",
+  "Commands Outside Sandbox": "Команды вне песочницы",
+  "Terminal & Tooling Permissions": "Разрешения терминала и инструментов",
+  "Permission Preset": "Предустановка разрешений",
+  "Inherit General": "Наследовать общие",
+  "Full Access": "Полный доступ",
+  "Restricted": "Ограниченный",
+  "Read Only": "Только чтение",
+  "Allow command execution": "Разрешить выполнение команд",
+  "Require approval": "Требовать подтверждения",
+  "Always allow": "Всегда разрешать",
+  "Never allow": "Никогда не разрешать",
+  "Network Permissions": "Сетевые разрешения",
+  "Allowed Hosts": "Разрешенные хосты",
+  "Network Access": "Доступ к сети",
+  "Allow All": "Разрешить все",
+  "Block All": "Блокировать все",
+  "Add Host": "Добавить хост",
+  "Add host": "Добавить хост",
+  "Allow outbound connections": "Разрешить исходящие соединения",
+  "Window": "Окно",
+  "Window Title": "Заголовок окна",
+  "Zoom Level": "Масштаб",
+  "Reload Window": "Перезагрузить окно",
+  "Toggle Full Screen": "Полноэкранный режим",
+  "Reset Zoom": "Сбросить масштаб",
+  "Zoom In": "Увеличить",
+  "Zoom Out": "Уменьшить",
+  "Shortcuts": "Горячие клавиши",
+  "Keyboard shortcuts for quick navigation and control.": "Сочетания клавиш для быстрой навигации и управления.",
+  "Recommended": "Рекомендуемые",
+  "Navigation": "Навигация",
+  "Conversation": "Диалог",
+  "Layout Controls": "Управление разметкой",
+  "Open File Search": "Открыть поиск файлов",
+  "Previous Pane Tab": "Предыдущая вкладка панели",
+  "Next Pane Tab": "Следующая вкладка панели",
+  "Add to Chat/Quote": "Добавить в чат / Цитировать",
+  "Toggle Terminal": "Переключить терминал",
+  "Toggle Sidebar": "Переключить боковую панель",
+  "Toggle Bottom Bar": "Переключить нижнюю панель",
+  "Focus Chat": "Фокус на чате",
+  "Focus Editor": "Фокус на редакторе",
+  "Send Message": "Отправить сообщение",
+  "Stop Generation": "Остановить генерацию",
+  "Clear Conversation": "Очистить диалог",
+  "Release": "Отпустить",
+  "Hold": "Удерживать",
+  "Hold to speak": "Удерживайте для голосового ввода",
+  "Release to send": "Отпустите для отправки",
+  "Skills": "Навыки",
+  "Available Skills": "Доступные навыки",
+  "Installed Skills": "Установленные навыки",
+  "Built-in Skills": "Встроенные навыки",
+  "Custom Skills": "Пользовательские навыки",
+  "No skills installed": "Нет установленных навыков",
+  "No skills found": "Навыки не найдены",
+  "Search skills": "Поиск навыков",
+  "Search skills...": "Поиск навыков...",
+  "Skill Details": "Сведения о навыке",
+  "Enable Skill": "Включить навык",
+  "Disable Skill": "Отключить навык",
+  "Reload Skills": "Перезагрузить навыки",
+  "Manage Skills": "Управление навыками",
+  "Skills & Customizations": "Навыки и настройки",
+  "Skills & customizations": "Навыки и настройки",
+  "Provide Feedback": "Оставить отзыв",
+  "Provide feedback": "Оставить отзыв",
+  "Feedback Type": "Тип отзыва",
+  "Bug Report": "Отчёт об ошибке",
+  "Feature Request": "Предложение функции",
+  "Auth and Billing": "Авторизация и биллинг",
+  "General Feedback": "Общий отзыв",
+  "Description": "Описание",
+  "Steps to Reproduce": "Шаги для воспроизведения",
+  "Please list the steps to reproduce the issue": "Пожалуйста, укажите шаги для воспроизведения проблемы",
+  "Attach a screenshot (optional)": "Прикрепить скриншот (необязательно)",
+  "Screenshot must be under 10 MB": "Размер скриншота не должен превышать 10 МБ",
+  "Attach Antigravity server logs": "Прикрепить логи сервера Antigravity",
+  "Attaching logs requires an email address": "Для отправки логов требуется email-адрес",
+  "Submit": "Отправить",
+  "Submitting...": "Отправка...",
+  "Thank you! Your feedback has been submitted successfully.": "Спасибо! Ваш отзыв успешно отправлен.",
+  "An error occurred while submitting your feedback. Please try again.": "Произошла ошибка при отправке отзыва. Пожалуйста, попробуйте снова.",
+  "We recommend attaching logs. Attaching logs will help the Antigravity team act on and prioritize your feedback.": "Мы рекомендуем прикреплять логи. Это поможет команде Antigravity быстрее обработать ваш отзыв.",
   "New Conversation": "Новый диалог",
   "New conversation": "Новый диалог",
   "Conversation History": "История диалогов",
@@ -1227,12 +1354,65 @@
   };
 
 
-  // --- СЛОВАРНЫЙ ПЕРЕВОД ТЕКСТОВЫХ НОД И АТРИБУТОВ DOM ---
+  
+  // Функция локализации заголовка блока мыслей и таймеров
+  function translateTriggerHeader(str) {
+    if (!str || typeof str !== 'string') return str;
+    var trimmed = str.trim();
+    if (trimmed === 'Thought Process' || trimmed === 'Thought process') return 'Ход размышлений';
+    if (trimmed === 'Thinking...') return 'Размышляет...';
+    if (DICT[trimmed]) return DICT[trimmed];
+
+    // Регулярные выражения для таймеров мыслей и действий
+    var mThought = trimmed.match(/^Thought for (\d+)s$/i);
+    if (mThought) return 'Размышлял ' + mThought[1] + ' с';
+
+    var mWorked = trimmed.match(/^Worked for (\d+)s$/i);
+    if (mWorked) return 'Работал ' + mWorked[1] + ' с';
+
+    var mRan = trimmed.match(/^Ran for (\d+)s$/i);
+    if (mRan) return 'Выполнялся ' + mRan[1] + ' с';
+
+    return str;
+  }
+  window.__ag_trH = translateTriggerHeader;
+
+// --- СЛОВАРНЫЙ ПЕРЕВОД ТЕКСТОВЫХ НОД И АТРИБУТОВ DOM ---
   function translateText(text) {
     if (!text) return text;
     var trimmed = text.trim();
     if (!trimmed) return text;
 
+    // Динамические паттерны
+    var mWorkedM = trimmed.match(/^Worked for (\d+)m$/i);
+    if (mWorkedM) return 'Работал ' + mWorkedM[1] + ' мин';
+
+    var mWorkedS = trimmed.match(/^Worked for (\d+)s$/i);
+    if (mWorkedS) return 'Работал ' + mWorkedS[1] + ' с';
+
+    var mThoughtS = trimmed.match(/^Thought for (\d+)s$/i);
+    if (mThoughtS) return 'Размышлял ' + mThoughtS[1] + ' с';
+
+    var mThoughtM = trimmed.match(/^Thought for (\d+)m$/i);
+    if (mThoughtM) return 'Размышлял ' + mThoughtM[1] + ' мин';
+
+    var mRanS = trimmed.match(/^Ran for (\d+)s$/i);
+    if (mRanS) return 'Выполнялся ' + mRanS[1] + ' с';
+
+    var mRanM = trimmed.match(/^Ran for (\d+)m$/i);
+    if (mRanM) return 'Выполнялся ' + mRanM[1] + ' мин';
+
+    var mCmd = trimmed.match(/^(\d+)\s+commands?$/i);
+    if (mCmd) return mCmd[1] + ' команд';
+
+    var mFiles = trimmed.match(/^(\d+)\s+files?$/i);
+    if (mFiles) return mFiles[1] === '1' ? '1 файл' : mFiles[1] + ' файлов';
+
+    var mHold = trimmed.match(/^([A-Za-z0-9+]+)\s+Hold$/i);
+    if (mHold) return mHold[1] + ' (удерживать)';
+
+    var mRel = trimmed.match(/^([A-Za-z0-9+]+)\s+Release$/i);
+    if (mRel) return mRel[1] + ' (отпустить)';
     if (DICT[trimmed]) {
       var ru = DICT[trimmed];
       if (text.startsWith(' ') || text.endsWith(' ')) {
