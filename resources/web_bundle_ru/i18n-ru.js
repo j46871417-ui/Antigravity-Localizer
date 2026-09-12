@@ -8,6 +8,52 @@
   'use strict';
 
   const DICT = {
+  "Working": "Работает",
+  "working": "работает",
+  "Working...": "Работает...",
+  "working...": "работает...",
+  "Compacting": "Сжатие",
+  "Compacting...": "Сжатие...",
+  "Agent Stopped": "Агент остановлен",
+  "Agent stopped": "Агент остановлен",
+  "Working copy": "Рабочая копия",
+  "Working directory: ": "Рабочий каталог: ",
+  "Working Directory": "Рабочий каталог",
+  "Executing task: ": "Выполнение задачи: ",
+  "Killed": "Остановлено",
+  "Stopped after": "Остановлено через",
+  "Tasks": "Задачи",
+  "tasks": "задачи",
+  "Task": "Задача",
+  "task": "задача",
+  "Background Tasks": "Фоновые задачи",
+  "Background tasks": "Фоновые задачи",
+  "Background Task": "Фоновая задача",
+  "Background task": "Фоновая задача",
+  "Background Task Output": "Вывод фоновой задачи",
+  "Scheduled Tasks": "Запланированные задачи",
+  "Scheduled tasks": "Запланированные задачи",
+  "Scheduled Task": "Запланированная задача",
+  "Scheduled task": "Запланированная задача",
+  "No background tasks": "Нет фоновых задач",
+  "No scheduled tasks": "Нет запланированных задач",
+  "No tasks": "Нет задач",
+  "Cancel Task": "Отменить задачу",
+  "Cancel task": "Отменить задачу",
+  "Cancel All Tasks": "Отменить все задачи",
+  "Cancel all tasks": "Отменить все задачи",
+  "Stop Task": "Остановить задачу",
+  "Edit task title": "Редактировать название задачи",
+  "The task has not begun yet.": "Задача еще не началась.",
+  "The task is already done.": "Задача уже выполнена.",
+  "Analyzed Task Log": "Лог задачи проанализирован",
+  "Analyzing Task Log": "Анализ лога задачи",
+  "Open Conversation History": "Открыть историю диалогов",
+  "Select Next Conversation": "Следующий диалог",
+  "Select Previous Conversation": "Предыдущий диалог",
+  "Previous Aux Pane Tab": "Предыдущая вкладка доп. панели",
+  "Next Aux Pane Tab": "Следующая вкладка доп. панели",
+  "No artifacts generated": "Нет созданных артефактов",
   "Background Task Output": "Вывод фоновой задачи",
   "Proceeded with": "Продолжил выполнение",
   "Proceed with": "Продолжить",
@@ -1097,72 +1143,113 @@
   const fullTextCache = new Map();
   const inFlightRequests = new Map();
 
-  // Быстрый перевод отдельного абзаца/фрагмента через Google Translate API
-  async function translateChunk(chunk) {
-    if (!chunk || !chunk.trim()) return chunk;
-    const key = chunk.trim();
-    if (paragraphCache.has(key)) return paragraphCache.get(key);
+  // Быстрый пакетный перевод текста через Google Translate API с сохранением Markdown
+  async function translateBatch(text) {
+    if (!text || !text.trim()) return text;
+    const trimmed = text.trim();
+    if (paragraphCache.has(trimmed)) return paragraphCache.get(trimmed);
 
+    // Если уже на русском — возвращаем сразу
+    const ruChars = (trimmed.match(/[а-яА-ЯёЁ]/g) || []).length;
+    const latChars = (trimmed.match(/[a-zA-Z]/g) || []).length;
+    if (ruChars > latChars && ruChars > 10) {
+      paragraphCache.set(trimmed, text);
+      return text;
+    }
+
+    // 1. Попытка через основной endpoint
     try {
-      const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=' + encodeURIComponent(key);
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const data = await resp.json();
-      if (Array.isArray(data) && Array.isArray(data[0])) {
-        const res = data[0].map(item => item[0]).join('');
-        if (res) {
-          paragraphCache.set(key, res);
+      const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t&q=' + encodeURIComponent(trimmed);
+      const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (Array.isArray(data) && Array.isArray(data[0])) {
+          const res = data[0].map(item => item && item[0] ? item[0] : '').join('');
+          if (res && res.trim() && /[а-яА-ЯёЁ]/.test(res)) {
+            paragraphCache.set(trimmed, res);
+            return res;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[i18n-thought GET error]', e);
+    }
+
+    // 2. Фолбэк через альтернативный клиент dict-chrome-ex
+    try {
+      const fallbackUrl = 'https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ru&q=' + encodeURIComponent(trimmed);
+      const resp = await fetch(fallbackUrl);
+      if (resp.ok) {
+        const data = await resp.json();
+        const res = Array.isArray(data) ? data.join('') : (typeof data === 'string' ? data : '');
+        if (res && res.trim() && /[а-яА-ЯёЁ]/.test(res)) {
+          paragraphCache.set(trimmed, res);
           return res;
         }
       }
     } catch (e) {
-      // При сетевой ошибке возвращаем оригинал
+      console.warn('[i18n-thought fallback error]', e);
     }
-    return chunk;
+
+    return text;
   }
 
-  // Построчный/поблочный перевод всего потока размышлений с сохранением форматирования Markdown
+  // Полнотекстовый перевод с сохранением Markdown-блоков кода
   async function translateLiveText(fullText) {
     if (!fullText || typeof fullText !== 'string') return fullText;
     if (fullTextCache.has(fullText)) return fullTextCache.get(fullText);
     if (inFlightRequests.has(fullText)) return inFlightRequests.get(fullText);
 
     const promise = (async () => {
-      const lines = fullText.split('\n');
-      const translatedLines = [];
-      let inCodeBlock = false;
+      // 1. Извлекаем блоки кода, чтобы не ломать синтаксис
+      const codeBlocks = [];
+      let textWithoutCode = fullText.replace(/```[\s\S]*?```/g, function (match) {
+        const placeholder = `___AG_CODE_${codeBlocks.length}___`;
+        codeBlocks.push(match);
+        return placeholder;
+      });
 
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const trimmed = line.trim();
+      // Также извлекаем инлайн-код
+      const inlineCodes = [];
+      textWithoutCode = textWithoutCode.replace(/`[^`\n]{1,80}`/g, function (match) {
+        const placeholder = `___AG_INL_${inlineCodes.length}___`;
+        inlineCodes.push(match);
+        return placeholder;
+      });
 
-        // Пропускаем блоки кода (```) без изменений
-        if (trimmed.startsWith('```')) {
-          inCodeBlock = !inCodeBlock;
-          translatedLines.push(line);
-          continue;
+      // 2. Если текст небольшой (< 3500 символов), переводим целиком за 1 запрос!
+      let translatedText = '';
+      if (textWithoutCode.length < 3500) {
+        translatedText = await translateBatch(textWithoutCode);
+      } else {
+        // Большой текст: делим по абзацам (двойным переносам)
+        const paragraphs = textWithoutCode.split(/\n\s*\n/);
+        const translatedParagraphs = [];
+        for (const p of paragraphs) {
+          if (!p.trim()) {
+            translatedParagraphs.push(p);
+            continue;
+          }
+          const tr = await translateBatch(p);
+          translatedParagraphs.push(tr);
         }
-        if (inCodeBlock || !trimmed) {
-          translatedLines.push(line);
-          continue;
-        }
-
-        // Сохраняем отступы списков
-        const match = line.match(/^(\s*[-*•\d\.]+\s+)(.*)$/);
-        if (match) {
-          const prefix = match[1];
-          const text = match[2];
-          const tr = await translateChunk(text);
-          translatedLines.push(prefix + tr);
-        } else {
-          const tr = await translateChunk(trimmed);
-          translatedLines.push(tr);
-        }
+        translatedText = translatedParagraphs.join('\n\n');
       }
 
-      const result = translatedLines.join('\n');
-      fullTextCache.set(fullText, result);
-      return result;
+      // 3. Восстанавливаем блоки кода и инлайн-код
+      for (let i = 0; i < inlineCodes.length; i++) {
+        translatedText = translatedText.replace(new RegExp(`___AG_INL_${i}___`, 'g'), inlineCodes[i]);
+      }
+      for (let i = 0; i < codeBlocks.length; i++) {
+        translatedText = translatedText.replace(new RegExp(`___AG_CODE_${i}___`, 'g'), codeBlocks[i]);
+      }
+
+      // ВАЖНО: Кэшируем ТОЛЬКО если перевод реально успешен (содержит русский текст)
+      if (/[а-яА-ЯёЁ]/.test(translatedText)) {
+        fullTextCache.set(fullText, translatedText);
+      }
+
+      return translatedText;
     })();
 
     inFlightRequests.set(fullText, promise);
@@ -1176,13 +1263,27 @@
   // Хелпер для перевода заголовков блоков действий
   window.__ag_trH = function (s) {
     if (typeof s !== 'string') return s;
-    return s.replace(/Worked for (\d+)s/g, 'Работал $1 с')
-            .replace(/Worked for (\d+)m/g, 'Работал $1 мин')
-            .replace(/Worked for (\d+)h/g, 'Работал $1 ч')
-            .replace(/Thinking for (\d+)s/g, 'Размышлял $1 с')
-            .replace(/Thought for (\d+)s/g, 'Размышлял $1 с')
-            .replace(/Thought for (\d+)m/g, 'Размышлял $1 мин')
-            .replace(/Thought Process/g, 'Ход размышлений');
+    var trimmed = s.trim();
+    if (trimmed === 'Working' || trimmed === 'working') return 'Работает';
+    if (trimmed === 'Working...' || trimmed === 'working...') return 'Работает...';
+    if (trimmed === 'Compacting' || trimmed === 'Compacting...') return 'Сжатие...';
+    if (trimmed === 'Thought Process' || trimmed === 'Thought process') return 'Ход размышлений';
+    if (trimmed === 'Thinking...') return 'Размышляет...';
+    if (DICT[trimmed]) return DICT[trimmed];
+
+    return s.replace(/Worked for (\d+)s/gi, 'Работал $1 с')
+            .replace(/Worked for (\d+)m/gi, 'Работал $1 мин')
+            .replace(/Worked for (\d+)h/gi, 'Работал $1 ч')
+            .replace(/Thinking for (\d+)s/gi, 'Размышлял $1 с')
+            .replace(/Thinking for (\d+)m/gi, 'Размышлял $1 мин')
+            .replace(/Thinking for (\d+)h/gi, 'Размышлял $1 ч')
+            .replace(/Thought for (\d+)s/gi, 'Размышлял $1 с')
+            .replace(/Thought for (\d+)m/gi, 'Размышлял $1 мин')
+            .replace(/Thought for (\d+)h/gi, 'Размышлял $1 ч')
+            .replace(/Ran for (\d+)s/gi, 'Выполнялся $1 с')
+            .replace(/Ran for (\d+)m/gi, 'Выполнялся $1 мин')
+            .replace(/Ran for (\d+)h/gi, 'Выполнялся $1 ч')
+            .replace(/Thought Process/gi, 'Ход размышлений');
   };
 
   // React-компонент, встраиваемый непосредственно в рендерер kib внутри main.js
@@ -1352,30 +1453,6 @@
       isRunning
     });
   };
-
-
-  
-  // Функция локализации заголовка блока мыслей и таймеров
-  function translateTriggerHeader(str) {
-    if (!str || typeof str !== 'string') return str;
-    var trimmed = str.trim();
-    if (trimmed === 'Thought Process' || trimmed === 'Thought process') return 'Ход размышлений';
-    if (trimmed === 'Thinking...') return 'Размышляет...';
-    if (DICT[trimmed]) return DICT[trimmed];
-
-    // Регулярные выражения для таймеров мыслей и действий
-    var mThought = trimmed.match(/^Thought for (\d+)s$/i);
-    if (mThought) return 'Размышлял ' + mThought[1] + ' с';
-
-    var mWorked = trimmed.match(/^Worked for (\d+)s$/i);
-    if (mWorked) return 'Работал ' + mWorked[1] + ' с';
-
-    var mRan = trimmed.match(/^Ran for (\d+)s$/i);
-    if (mRan) return 'Выполнялся ' + mRan[1] + ' с';
-
-    return str;
-  }
-  window.__ag_trH = translateTriggerHeader;
 
 // --- СЛОВАРНЫЙ ПЕРЕВОД ТЕКСТОВЫХ НОД И АТРИБУТОВ DOM ---
   function translateText(text) {
