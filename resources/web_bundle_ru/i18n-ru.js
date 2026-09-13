@@ -8,6 +8,8 @@
   'use strict';
 
   const DICT = {
+    "e.g. "My Custom Gemini Model"": "например, «Мой кастомный DeepSeek»",
+    "Model must be available on the Gemini API and use the gemini-api scheme.": "Модель должна быть доступна через Gemini API или AI Bridge со схемой gemini-api:.",
     "Files Changed": "Изменённые файлы",
     "Files changed": "Изменённые файлы",
     "files changed": "изменённых файлов",
@@ -1207,12 +1209,12 @@
     "MODEL": "МОДЕЛЬ",
     "Model": "Модель",
     "Model Credits": "Кредиты модели",
-    "Model Label": "Этикетка модели",
+    "Model Label": "Название модели",
     "Model Quota": "Квота модели",
     "Model quota reached": "Квота модели исчерпана",
     "Model Selection": "Выбор модели",
     "Model Summarization Failed": "Суммирование модели не удалось",
-    "Model URL": "URL-адрес модели",
+    "Model URL": "URL модели",
     "Models": "Модели",
     "Models & Usage": "Модели и использование",
     "Models Tab": "Вкладка «Модели»",
