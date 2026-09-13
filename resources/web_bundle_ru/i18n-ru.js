@@ -8,6 +8,39 @@
   'use strict';
 
   const DICT = {
+    "Files Changed": "Изменённые файлы",
+    "Files changed": "Изменённые файлы",
+    "files changed": "изменённых файлов",
+    "File Changed": "Изменённый файл",
+    "File changed": "Изменённый файл",
+    "file changed": "изменённый файл",
+    "No files changed": "Файлы не изменены",
+    "no files changed": "файлы не изменены",
+    "No file changes": "Файлы не изменены",
+    "no file changes": "файлы не изменены",
+    "Agent Edits": "Правки агента",
+    "agent edits": "правки агента",
+    "All agent edits": "Все правки агента",
+    "all agent edits": "все правки агента",
+    "Single edit": "Одиночная правка",
+    "single edit": "одиночная правка",
+    "Staged Changes": "Индексированные изменения",
+    "staged changes": "индексированные изменения",
+    "Branch Changes": "Изменения ветки",
+    "branch changes": "изменения ветки",
+    "Uncommitted Changes": "Незафиксированные изменения",
+    "uncommitted changes": "незафиксированные изменения",
+    "Uncommitted": "Незафиксированные",
+    "uncommitted": "незафиксированные",
+    "Review Changes": "Просмотр изменений",
+    "Review changes": "Просмотр изменений",
+    "review changes": "просмотр изменений",
+    "Failed to fetch diffs": "Не удалось получить список изменений",
+    "No workspaces open.": "Нет открытых рабочих областей.",
+    "Working Directory": "Рабочий каталог",
+    "working directory": "рабочий каталог",
+    "Expand All": "Развернуть всё",
+    "Collapse All": "Свернуть всё",
 
     " for more help.": " для получения помощи.",
     " models selected": " моделей выбрано",
@@ -2286,7 +2319,18 @@
   const fullTextCache = new Map();
   const inFlightRequests = new Map();
 
-  // Быстрый пакетный перевод текста через Google Translate API с сохранением Markdown
+  // Безопасный fetch с жестким таймаутом
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 3500) {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    try {
+      return await fetch(url, { ...options, signal: controller ? controller.signal : void 0 });
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
+  // Быстрый пакетный перевод текста через многоуровневый стек Google Translate API
   async function translateBatch(text) {
     if (!text || !text.trim()) return text;
     const trimmed = text.trim();
@@ -2300,44 +2344,92 @@
       return text;
     }
 
-    // 1. Попытка через основной endpoint
-    try {
-      const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t&q=' + encodeURIComponent(trimmed);
-      const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      if (resp.ok) {
-        const data = await resp.json();
-        if (Array.isArray(data) && Array.isArray(data[0])) {
-          const res = data[0].map(item => item && item[0] ? item[0] : '').join('');
-          if (res && res.trim() && /[а-яА-ЯёЁ]/.test(res)) {
-            paragraphCache.set(trimmed, res);
-            return res;
+    const encoded = encodeURIComponent(trimmed);
+
+    // Список проверенных эндпоинтов Google Translate в порядке приоритета
+    const endpoints = [
+      {
+        name: 'clients5',
+        url: 'https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ru&q=' + encoded,
+        parser: (data) => {
+          if (!data) return '';
+          if (typeof data === 'string') return data;
+          if (Array.isArray(data)) {
+            return data.map(item => Array.isArray(item) ? (item[0] || '') : (typeof item === 'string' ? item : '')).join('');
+          }
+          return '';
+        }
+      },
+      {
+        name: 'clients3',
+        url: 'https://clients3.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ru&q=' + encoded,
+        parser: (data) => {
+          if (!data) return '';
+          if (typeof data === 'string') return data;
+          if (Array.isArray(data)) {
+            return data.map(item => Array.isArray(item) ? (item[0] || '') : (typeof item === 'string' ? item : '')).join('');
+          }
+          return '';
+        }
+      },
+      {
+        name: 'clients1',
+        url: 'https://clients1.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ru&q=' + encoded,
+        parser: (data) => {
+          if (!data) return '';
+          if (typeof data === 'string') return data;
+          if (Array.isArray(data)) {
+            return data.map(item => Array.isArray(item) ? (item[0] || '') : (typeof item === 'string' ? item : '')).join('');
+          }
+          return '';
+        }
+      },
+      {
+        name: 'gtx',
+        url: 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t&q=' + encoded,
+        parser: (data) => {
+          if (!data) return '';
+          if (Array.isArray(data) && Array.isArray(data[0])) {
+            return data[0].map(item => item && item[0] ? item[0] : '').join('');
+          }
+          return '';
+        }
+      },
+      {
+        name: 'mymemory',
+        url: 'https://api.mymemory.translated.net/get?q=' + encoded + '&langpair=en|ru',
+        parser: (data) => {
+          if (data && data.responseData && data.responseData.translatedText) {
+            return data.responseData.translatedText;
+          }
+          return '';
+        }
+      }
+    ];
+
+    for (const ep of endpoints) {
+      try {
+        const resp = await fetchWithTimeout(ep.url, { headers: { 'Accept': 'application/json' } }, 3500);
+        if (resp && resp.ok) {
+          const data = await resp.json();
+          let res = ep.parser(data);
+          if (res && typeof res === 'string') {
+            res = res.replace(/,(?:en|ru|auto)$/i, '').trim();
+            if (res && /[а-яА-ЯёЁ]/.test(res)) {
+              paragraphCache.set(trimmed, res);
+              return res;
+            }
           }
         }
+      } catch (e) {
+        // endpoint failed or timed out, fallback to next
       }
-    } catch (e) {
-      console.warn('[i18n-thought GET error]', e);
-    }
-
-    // 2. Фолбэк через альтернативный клиент dict-chrome-ex
-    try {
-      const fallbackUrl = 'https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ru&q=' + encodeURIComponent(trimmed);
-      const resp = await fetch(fallbackUrl);
-      if (resp.ok) {
-        const data = await resp.json();
-        const res = Array.isArray(data) ? data.join('') : (typeof data === 'string' ? data : '');
-        if (res && res.trim() && /[а-яА-ЯёЁ]/.test(res)) {
-          paragraphCache.set(trimmed, res);
-          return res;
-        }
-      }
-    } catch (e) {
-      console.warn('[i18n-thought fallback error]', e);
     }
 
     return text;
   }
 
-  // Полнотекстовый перевод с сохранением Markdown-блоков кода
+  // Полнотекстовый перевод с сохранением Markdown-блоков кода и инлайн-кода
   window.__ag_translateLiveText = async function translateLiveText(fullText) {
     window.__ag_fullTextCache = fullTextCache;
     if (!fullText || typeof fullText !== 'string') return fullText;
@@ -2361,9 +2453,9 @@
         return placeholder;
       });
 
-      // 2. Если текст небольшой (< 3500 символов), переводим целиком за 1 запрос!
+      // 2. Если текст умеренного размера (< 1800 символов), переводим целиком
       let translatedText = '';
-      if (textWithoutCode.length < 3500) {
+      if (textWithoutCode.length < 1800) {
         translatedText = await translateBatch(textWithoutCode);
       } else {
         // Большой текст: делим по абзацам (двойным переносам)
@@ -2374,18 +2466,30 @@
             translatedParagraphs.push(p);
             continue;
           }
-          const tr = await translateBatch(p);
-          translatedParagraphs.push(tr);
+          if (p.length < 1800) {
+            const tr = await translateBatch(p);
+            translatedParagraphs.push(tr);
+          } else {
+            // Очень большой абзац: делим по строкам
+            const lines = p.split('\n');
+            const trLines = [];
+            for (const l of lines) {
+              trLines.push(l.trim() ? await translateBatch(l) : l);
+            }
+            translatedParagraphs.push(trLines.join('\n'));
+          }
         }
         translatedText = translatedParagraphs.join('\n\n');
       }
 
-      // 3. Восстанавливаем блоки кода и инлайн-код
+      // 3. Толерантное восстановление инлайн-кода и блоков кода (устойчиво к пробелам от переводчика)
       for (let i = 0; i < inlineCodes.length; i++) {
-        translatedText = translatedText.replace(new RegExp(`___AG_INL_${i}___`, 'g'), inlineCodes[i]);
+        const reg = new RegExp(`_{1,4}\\s*AG_INL_${i}\\s*_{1,4}`, 'gi');
+        translatedText = translatedText.replace(reg, () => inlineCodes[i]);
       }
       for (let i = 0; i < codeBlocks.length; i++) {
-        translatedText = translatedText.replace(new RegExp(`___AG_CODE_${i}___`, 'g'), codeBlocks[i]);
+        const reg = new RegExp(`_{1,4}\\s*AG_CODE_${i}\\s*_{1,4}`, 'gi');
+        translatedText = translatedText.replace(reg, () => codeBlocks[i]);
       }
 
       // ВАЖНО: Кэшируем ТОЛЬКО если перевод реально успешен (содержит русский текст)
@@ -2402,13 +2506,23 @@
     } finally {
       inFlightRequests.delete(fullText);
     }
-  }
+  };
 
   // Хелпер для перевода заголовков блоков действий и навигации
   window.__ag_trH = function (s) {
     if (typeof s !== 'string') return s;
     var trimmed = s.trim();
     if (DICT[trimmed]) return DICT[trimmed];
+    if (trimmed === 'Files Changed' || trimmed === 'Files changed' || trimmed === 'files changed') return 'Изменённые файлы';
+    if (trimmed === 'Agent Edits' || trimmed === 'agent edits') return 'Правки агента';
+    if (trimmed === 'Staged Changes' || trimmed === 'staged changes') return 'Индексированные изменения';
+    if (trimmed === 'Branch Changes' || trimmed === 'branch changes') return 'Изменения ветки';
+    if (trimmed === 'Review Changes' || trimmed === 'Review changes' || trimmed === 'review changes') return 'Просмотр изменений';
+    if (trimmed === 'Uncommitted Changes' || trimmed === 'uncommitted changes') return 'Незафиксированные изменения';
+    if (trimmed === 'Uncommitted' || trimmed === 'uncommitted') return 'Незафиксированные';
+    if (trimmed === 'Failed to fetch diffs') return 'Не удалось получить список изменений';
+    if (trimmed === 'No file changes' || trimmed === 'No files changed') return 'Файлы не изменены';
+    if (trimmed === 'No workspaces open.') return 'Нет открытых рабочих областей.';
     if (trimmed === 'Working' || trimmed === 'working') return 'Работает';
     if (trimmed === 'Working...' || trimmed === 'working...') return 'Работает...';
     if (trimmed === 'Compacting' || trimmed === 'Compacting...') return 'Сжатие...';
@@ -2665,6 +2779,51 @@
 
     var mCmd = trimmed.match(/^(\d+)\s+commands?$/i);
     if (mCmd) return mCmd[1] + ' команд';
+
+    var mFilesChanged = trimmed.match(/^(\d+)\s*files?\s*changed$/i);
+    if (mFilesChanged) {
+      var n = parseInt(mFilesChanged[1], 10);
+      var w = 'изменённых файлов';
+      if (n % 10 === 1 && n % 100 !== 11) w = 'изменённый файл';
+      else if ([2, 3, 4].indexOf(n % 10) !== -1 && [12, 13, 14].indexOf(n % 100) === -1) w = 'изменённых файла';
+      return n + ' ' + w;
+    }
+
+    var mFilesCreated = trimmed.match(/^(\d+)\s*files?\s*created$/i);
+    if (mFilesCreated) return 'Создано файлов: ' + mFilesCreated[1];
+
+    var mFilesDeleted = trimmed.match(/^(\d+)\s*files?\s*deleted$/i);
+    if (mFilesDeleted) return 'Удалено файлов: ' + mFilesDeleted[1];
+
+    var mFilesModified = trimmed.match(/^(\d+)\s*files?\s*modified$/i);
+    if (mFilesModified) return 'Изменено файлов: ' + mFilesModified[1];
+
+    var mLinesAdded = trimmed.match(/^(\d+)\s*lines?\s*added$/i);
+    if (mLinesAdded) return 'Добавлено строк: ' + mLinesAdded[1];
+
+    var mLinesRemoved = trimmed.match(/^(\d+)\s*lines?\s*removed$/i);
+    if (mLinesRemoved) return 'Удалено строк: ' + mLinesRemoved[1];
+
+    var mLinesChanged = trimmed.match(/^(\d+)\s*lines?\s*changed$/i);
+    if (mLinesChanged) return 'Изменено строк: ' + mLinesChanged[1];
+
+    var mEdits = trimmed.match(/^(\d+)\s*edits?$/i);
+    if (mEdits) {
+      var n = parseInt(mEdits[1], 10);
+      var w = 'правок';
+      if (n % 10 === 1 && n % 100 !== 11) w = 'правка';
+      else if ([2, 3, 4].indexOf(n % 10) !== -1 && [12, 13, 14].indexOf(n % 100) === -1) w = 'правки';
+      return n + ' ' + w;
+    }
+
+    var mChanges = trimmed.match(/^(\d+)\s*changes?$/i);
+    if (mChanges) {
+      var n = parseInt(mChanges[1], 10);
+      var w = 'изменений';
+      if (n % 10 === 1 && n % 100 !== 11) w = 'изменение';
+      else if ([2, 3, 4].indexOf(n % 10) !== -1 && [12, 13, 14].indexOf(n % 100) === -1) w = 'изменения';
+      return n + ' ' + w;
+    }
 
     var mFiles = trimmed.match(/^(\d+)\s+files?$/i);
     if (mFiles) return mFiles[1] === '1' ? '1 файл' : mFiles[1] + ' файлов';
