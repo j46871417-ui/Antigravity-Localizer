@@ -5027,202 +5027,457 @@
   const STORAGE_KEY_AUTO = 'ag_thoughts_auto_translate';
   const STORAGE_KEY_VIEW = 'ag_thoughts_view_lang';
 
-  // Глобальный кэш переведённых абзацев и блоков
-  const paragraphCache = new Map();
-  const fullTextCache = new Map();
-  const inFlightRequests = new Map();
+  // =========================================================================
+  // ZERO-LAG MULTI-USER TRANSLATION ENGINE (POST + CIRCUIT BREAKER + L1/L2)
+  // =========================================================================
 
-  // Безопасный fetch с жестким таймаутом
-  async function fetchWithTimeout(url, options = {}, timeoutMs = 3500) {
-    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  function fastHash(str, seed = 0) {
+    let h1 = 0xdeadbeef ^ seed;
+    let h2 = 0x41c6ce57 ^ seed;
+    for (let i = 0; i < str.length; i++) {
+      const ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    const hash53 = 4294967296 * (2097151 & h2) + (h1 >>> 0);
+    return hash53.toString(16).padStart(14, '0');
+  }
+
+  class CircuitBreaker {
+    constructor(name, options = {}) {
+      this.name = name;
+      this.baseCooldownMs = options.baseCooldownMs || 30000;
+      this.maxCooldownMs = options.maxCooldownMs || 300000;
+      this.failCount = 0;
+      this.successCount = 0;
+      this.disabledUntil = 0;
+      this.state = 'CLOSED';
+      this.probeInProgress = false;
+    }
+
+    isAvailable() {
+      const now = Date.now();
+      if (this.state === 'OPEN') {
+        if (now < this.disabledUntil) return false;
+        this.state = 'HALF_OPEN';
+        this.probeInProgress = true;
+        return true;
+      }
+      if (this.state === 'HALF_OPEN') {
+        if (this.probeInProgress) return false;
+        this.probeInProgress = true;
+        return true;
+      }
+      return true;
+    }
+
+    recordSuccess() {
+      this.failCount = 0;
+      this.disabledUntil = 0;
+      this.state = 'CLOSED';
+      this.probeInProgress = false;
+      this.successCount++;
+    }
+
+    recordFailure(status, err = null, retryAfterSec = null) {
+      this.failCount++;
+      this.probeInProgress = false;
+      this.state = 'OPEN';
+      const now = Date.now();
+      let durationMs = this.baseCooldownMs;
+      if (retryAfterSec && retryAfterSec > 0) durationMs = retryAfterSec * 1000;
+      else if (status === 429) durationMs = 60000;
+      else if (status === 403) durationMs = 90000;
+      else if (status >= 500) durationMs = 45000;
+      else if (!status) durationMs = 25000;
+
+      const expFactor = Math.min(Math.pow(2, Math.min(this.failCount - 1, 4)), 16);
+      this.disabledUntil = now + Math.min(durationMs * expFactor, this.maxCooldownMs);
+    }
+  }
+
+  class TwoLevelCache {
+    constructor(options = {}) {
+      this.l1 = new Map();
+      this.maxL1 = options.maxL1 || 1500;
+      this.prefix = options.prefix || 'ag_tr_v2_';
+      this.ttlMs = options.ttlMs || 14 * 24 * 3600 * 1000;
+      this.l2 = typeof localStorage !== 'undefined' ? localStorage : null;
+    }
+
+    get(text) {
+      if (!text) return null;
+      const hash = fastHash(text);
+      if (this.l1.has(hash)) {
+        const val = this.l1.get(hash);
+        this.l1.delete(hash);
+        this.l1.set(hash, val);
+        return { value: val, level: 'L1' };
+      }
+      if (this.l2) {
+        try {
+          const raw = this.l2.getItem(this.prefix + hash);
+          if (raw) {
+            const entry = JSON.parse(raw);
+            if (entry && entry.t && (Date.now() - (entry.ts || 0) < this.ttlMs)) {
+              this._putL1(hash, entry.t);
+              return { value: entry.t, level: 'L2' };
+            }
+          }
+        } catch (e) {}
+      }
+      return null;
+    }
+
+    set(text, translation) {
+      if (!text || !translation) return;
+      const hash = fastHash(text);
+      this._putL1(hash, translation);
+      if (this.l2) {
+        try {
+          this.l2.setItem(this.prefix + hash, JSON.stringify({ t: translation, ts: Date.now() }));
+        } catch (e) {
+          this._pruneL2();
+        }
+      }
+    }
+
+    _putL1(hash, val) {
+      if (this.l1.size >= this.maxL1) {
+        const oldestKey = this.l1.keys().next().value;
+        this.l1.delete(oldestKey);
+      }
+      this.l1.set(hash, val);
+    }
+
+    _pruneL2() {
+      try {
+        if (this.l2 && typeof this.l2.key === 'function' && typeof this.l2.length === 'number') {
+          const toRemove = [];
+          for (let i = 0; i < this.l2.length; i++) {
+            const k = this.l2.key(i);
+            if (k && k.startsWith(this.prefix)) {
+              toRemove.push(k);
+              if (toRemove.length > 40) break;
+            }
+          }
+          toRemove.forEach(k => this.l2.removeItem(k));
+        }
+      } catch (e) {}
+    }
+  }
+
+  class MarkdownShield {
+    constructor() {
+      this.slots = new Map();
+      this.blockIds = new Set();
+      this.counter = 0;
+    }
+
+    mask(text) {
+      this.slots.clear();
+      this.blockIds.clear();
+      this.counter = 0;
+      let masked = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, (match) => {
+        const id = this.counter++;
+        this.slots.set(id, match);
+        this.blockIds.add(id);
+        return `\n\n___AGBLK_${id}___\n\n`;
+      });
+      masked = masked.replace(/(`[^`\n]{1,120}`)/g, (match) => {
+        const id = this.counter++;
+        this.slots.set(id, match);
+        return ` ___AGINL_${id}___ `;
+      });
+      return masked;
+    }
+
+    unmask(translatedText) {
+      if (!translatedText || this.slots.size === 0) return translatedText;
+      const tolerantPattern = /(?:[«⟦\[\("'_~\s-]*)(?:AG|АГ)\s*(?:BLK|INL|CODE|TOKENB|TOKENI|БЛК|ИНЛ|КОД)?[_\s-]*(\d+)(?:[»⟧\]\)"'_~\s-]*)/gi;
+      let res = translatedText.replace(tolerantPattern, (match, idStr) => {
+        const id = parseInt(idStr, 10);
+        if (!this.slots.has(id)) return match;
+        const orig = this.slots.get(id);
+        if (this.blockIds.has(id)) {
+          return `\n\n${orig}\n\n`;
+        }
+        return ` ${orig} `;
+      });
+      return res.replace(/\n{3,}/g, '\n\n').trim();
+    }
+  }
+
+  async function mapConcurrent(items, maxWorkers, asyncTaskFn, fallbackFn = (item) => item) {
+    const n = items.length;
+    if (n === 0) return [];
+    const results = new Array(n);
+    let cursor = 0;
+    const workerCount = Math.min(maxWorkers, n);
+
+    const workers = Array.from({ length: workerCount }, async () => {
+      while (true) {
+        const index = cursor++;
+        if (index >= n) break;
+        const item = items[index];
+        try {
+          results[index] = await asyncTaskFn(item, index);
+        } catch (err) {
+          results[index] = fallbackFn(item, index, err);
+        }
+      }
+    });
+
+    await Promise.all(workers);
+    return results;
+  }
+
+  function decodeHtmlEntities(str) {
+    if (!str) return '';
+    return str
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  }
+
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 4000) {
+    let timeoutId = null;
+    let signal = options.signal;
+    if (!signal) {
+      if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+        signal = AbortSignal.timeout(timeoutMs);
+      } else if (typeof AbortController !== 'undefined') {
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => { try { controller.abort(); } catch (e) {} }, timeoutMs);
+        signal = controller.signal;
+      }
+    }
     try {
-      return await fetch(url, { ...options, signal: controller ? controller.signal : void 0 });
+      const fetchFn = typeof fetch !== 'undefined' ? fetch : globalThis.fetch;
+      return await fetchFn(url, { ...options, signal });
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
     }
   }
 
-  // Быстрый пакетный перевод текста через многоуровневый стек Google Translate API
-  async function translateBatch(text) {
-    if (!text || !text.trim()) return text;
-    const trimmed = text.trim();
-    if (paragraphCache.has(trimmed)) return paragraphCache.get(trimmed);
+  class AdvancedTranslationEngine {
+    constructor() {
+      this.cache = new TwoLevelCache();
+      this.inFlight = new Map();
+      this.maxWorkers = 3;
+      this.timeoutMs = 6000;
 
-    // Если уже на русском — возвращаем сразу
-    const ruChars = (trimmed.match(/[а-яА-ЯёЁ]/g) || []).length;
-    const latChars = (trimmed.match(/[a-zA-Z]/g) || []).length;
-    if (ruChars > latChars && ruChars > 10) {
-      paragraphCache.set(trimmed, text);
+      this.endpoints = [
+        {
+          id: 'clients5-post',
+          breaker: new CircuitBreaker('clients5-post', { baseCooldownMs: 30000 }),
+          request: async (text) => {
+            return await fetchWithTimeout('https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ru', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+                'Accept': 'application/json'
+              },
+              body: 'q=' + encodeURIComponent(text)
+            }, this.timeoutMs);
+          },
+          parse: async (resp) => {
+            const data = await resp.json();
+            if (typeof data === 'string') return data;
+            if (Array.isArray(data)) {
+              return data.map(item => Array.isArray(item) ? (item[0] || '') : (typeof item === 'string' ? item : '')).join('');
+            }
+            return '';
+          }
+        },
+        {
+          id: 'mymemory',
+          breaker: new CircuitBreaker('mymemory', { baseCooldownMs: 30000 }),
+          request: async (text) => {
+            return await fetchWithTimeout('https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) + '&langpair=en|ru', {
+              headers: { 'Accept': 'application/json' }
+            }, 3500);
+          },
+          parse: async (resp) => {
+            const data = await resp.json();
+            return data && data.responseData && data.responseData.translatedText ? decodeHtmlEntities(data.responseData.translatedText) : '';
+          }
+        },
+        {
+          id: 'clients1-post',
+          breaker: new CircuitBreaker('clients1-post', { baseCooldownMs: 40000 }),
+          request: async (text) => {
+            return await fetchWithTimeout('https://clients1.google.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+                'Accept': 'application/json'
+              },
+              body: 'q=' + encodeURIComponent(text)
+            }, this.timeoutMs);
+          },
+          parse: async (resp) => {
+            const data = await resp.json();
+            if (Array.isArray(data) && Array.isArray(data[0])) {
+              return data[0].map(item => item && item[0] ? item[0] : '').join('');
+            }
+            return '';
+          }
+        },
+        {
+          id: 'google-post',
+          breaker: new CircuitBreaker('google-post', { baseCooldownMs: 45000 }),
+          request: async (text) => {
+            return await fetchWithTimeout('https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+                'Accept': 'application/json'
+              },
+              body: 'q=' + encodeURIComponent(text)
+            }, this.timeoutMs);
+          },
+          parse: async (resp) => {
+            const data = await resp.json();
+            if (Array.isArray(data) && Array.isArray(data[0])) {
+              return data[0].map(item => item && item[0] ? item[0] : '').join('');
+            }
+            return '';
+          }
+        },
+        {
+          id: 'clients5-get',
+          breaker: new CircuitBreaker('clients5-get', { baseCooldownMs: 30000 }),
+          request: async (text) => {
+            return await fetchWithTimeout('https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ru&q=' + encodeURIComponent(text), {
+              headers: { 'Accept': 'application/json' }
+            }, this.timeoutMs);
+          },
+          parse: async (resp) => {
+            const data = await resp.json();
+            if (typeof data === 'string') return data;
+            if (Array.isArray(data)) {
+              return data.map(item => Array.isArray(item) ? (item[0] || '') : (typeof item === 'string' ? item : '')).join('');
+            }
+            return '';
+          }
+        }
+      ];
+    }
+
+    isRussian(text) {
+      if (!text || !text.trim()) return true;
+      const clean = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '').trim();
+      if (!clean) return true;
+      const ru = (clean.match(/[а-яА-ЯёЁ]/g) || []).length;
+      const en = (clean.match(/[a-zA-Z]/g) || []).length;
+      return (ru > 10 && ru > en * 0.4) || (ru > 4 && en < 4);
+    }
+
+    async translateChunk(text) {
+      if (!text || !text.trim()) return text;
+      const trimmed = text.trim();
+      const cached = this.cache.get(trimmed);
+      if (cached && cached.value) return cached.value;
+      if (this.isRussian(trimmed)) {
+        this.cache.set(trimmed, text);
+        return text;
+      }
+
+      for (const ep of this.endpoints) {
+        if (!ep.breaker.isAvailable()) continue; // Fast-Fail 0 ms
+        try {
+          const resp = await ep.request(trimmed);
+          if (!resp) { ep.breaker.recordFailure(0, 'No resp'); continue; }
+          if (resp.status === 429) {
+            const retry = resp.headers && typeof resp.headers.get === 'function' ? parseInt(resp.headers.get('retry-after') || '0', 10) : null;
+            ep.breaker.recordFailure(429, 'Rate Limit', retry);
+            continue;
+          }
+          if (!resp.ok) { ep.breaker.recordFailure(resp.status, `HTTP ${resp.status}`); continue; }
+
+          const raw = await ep.parse(resp);
+          if (raw && typeof raw === 'string') {
+            const cleaned = raw.replace(/,(?:en|ru|auto)$/i, '').trim();
+            if (cleaned && /[а-яА-ЯёЁ]/.test(cleaned)) {
+              ep.breaker.recordSuccess();
+              this.cache.set(trimmed, cleaned);
+              return cleaned;
+            }
+          }
+          ep.breaker.recordFailure(resp.status || 200, 'Non-Russian result');
+        } catch (err) {
+          ep.breaker.recordFailure(0, err);
+        }
+      }
       return text;
     }
 
-    const encoded = encodeURIComponent(trimmed);
+    async translate(fullText) {
+      if (!fullText || typeof fullText !== 'string' || !fullText.trim()) return fullText;
+      const cached = this.cache.get(fullText);
+      if (cached && cached.value) return cached.value;
+      if (this.inFlight.has(fullText)) return await this.inFlight.get(fullText);
 
-    // Список проверенных эндпоинтов Google Translate в порядке приоритета
-    const endpoints = [
-      {
-        name: 'clients5',
-        url: 'https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ru&q=' + encoded,
-        parser: (data) => {
-          if (!data) return '';
-          if (typeof data === 'string') return data;
-          if (Array.isArray(data)) {
-            return data.map(item => Array.isArray(item) ? (item[0] || '') : (typeof item === 'string' ? item : '')).join('');
-          }
-          return '';
-        }
-      },
-      {
-        name: 'clients3',
-        url: 'https://clients3.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ru&q=' + encoded,
-        parser: (data) => {
-          if (!data) return '';
-          if (typeof data === 'string') return data;
-          if (Array.isArray(data)) {
-            return data.map(item => Array.isArray(item) ? (item[0] || '') : (typeof item === 'string' ? item : '')).join('');
-          }
-          return '';
-        }
-      },
-      {
-        name: 'clients1',
-        url: 'https://clients1.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ru&q=' + encoded,
-        parser: (data) => {
-          if (!data) return '';
-          if (typeof data === 'string') return data;
-          if (Array.isArray(data)) {
-            return data.map(item => Array.isArray(item) ? (item[0] || '') : (typeof item === 'string' ? item : '')).join('');
-          }
-          return '';
-        }
-      },
-      {
-        name: 'gtx',
-        url: 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t&q=' + encoded,
-        parser: (data) => {
-          if (!data) return '';
-          if (Array.isArray(data) && Array.isArray(data[0])) {
-            return data[0].map(item => item && item[0] ? item[0] : '').join('');
-          }
-          return '';
-        }
-      },
-      {
-        name: 'mymemory',
-        url: 'https://api.mymemory.translated.net/get?q=' + encoded + '&langpair=en|ru',
-        parser: (data) => {
-          if (data && data.responseData && data.responseData.translatedText) {
-            return data.responseData.translatedText;
-          }
-          return '';
-        }
-      }
-    ];
+      const task = (async () => {
+        const shield = new MarkdownShield();
+        const maskedText = shield.mask(fullText);
+        const paragraphs = maskedText.split(/\n\s*\n/);
+        let translatedMasked = '';
 
-    for (const ep of endpoints) {
+        if (maskedText.length < 1200 || paragraphs.length <= 1) {
+          translatedMasked = await this.translateChunk(maskedText);
+        } else {
+          const translatedParagraphs = await mapConcurrent(
+            paragraphs,
+            this.maxWorkers,
+            async (para) => {
+              if (!para || !para.trim()) return para;
+              if (para.length < 1500) return await this.translateChunk(para);
+              const lines = para.split('\n');
+              const trLines = await mapConcurrent(lines, this.maxWorkers, async (l) => l.trim() ? await this.translateChunk(l) : l);
+              return trLines.join('\n');
+            },
+            (p) => p
+          );
+          translatedMasked = translatedParagraphs.join('\n\n');
+        }
+
+        const result = shield.unmask(translatedMasked);
+        if (/[а-яА-ЯёЁ]/.test(result)) this.cache.set(fullText, result);
+        return result;
+      })();
+
+      this.inFlight.set(fullText, task);
       try {
-        const resp = await fetchWithTimeout(ep.url, { headers: { 'Accept': 'application/json' } }, 3500);
-        if (resp && resp.ok) {
-          const data = await resp.json();
-          let res = ep.parser(data);
-          if (res && typeof res === 'string') {
-            res = res.replace(/,(?:en|ru|auto)$/i, '').trim();
-            if (res && /[а-яА-ЯёЁ]/.test(res)) {
-              paragraphCache.set(trimmed, res);
-              return res;
-            }
-          }
-        }
-      } catch (e) {
-        // endpoint failed or timed out, fallback to next
+        return await task;
+      } finally {
+        this.inFlight.delete(fullText);
       }
-    }
-
-    return text;
-  }
-
-  // Полнотекстовый перевод с сохранением Markdown-блоков кода и инлайн-кода
-  async function translateLiveText(fullText) {
-    if (!fullText || typeof fullText !== 'string') return fullText;
-    if (fullTextCache.has(fullText)) return fullTextCache.get(fullText);
-    if (inFlightRequests.has(fullText)) return inFlightRequests.get(fullText);
-
-    const promise = (async () => {
-      // 1. Извлекаем блоки кода, чтобы не ломать синтаксис
-      const codeBlocks = [];
-      let textWithoutCode = fullText.replace(/```[\s\S]*?```/g, function (match) {
-        const placeholder = `___AG_CODE_${codeBlocks.length}___`;
-        codeBlocks.push(match);
-        return placeholder;
-      });
-
-      // Также извлекаем инлайн-код
-      const inlineCodes = [];
-      textWithoutCode = textWithoutCode.replace(/`[^`\n]{1,80}`/g, function (match) {
-        const placeholder = `___AG_INL_${inlineCodes.length}___`;
-        inlineCodes.push(match);
-        return placeholder;
-      });
-
-      // 2. Если текст умеренного размера (< 1800 символов), переводим целиком
-      let translatedText = '';
-      if (textWithoutCode.length < 1800) {
-        translatedText = await translateBatch(textWithoutCode);
-      } else {
-        // Большой текст: делим по абзацам (двойным переносам)
-        const paragraphs = textWithoutCode.split(/\n\s*\n/);
-        const translatedParagraphs = [];
-        for (const p of paragraphs) {
-          if (!p.trim()) {
-            translatedParagraphs.push(p);
-            continue;
-          }
-          if (p.length < 1800) {
-            const tr = await translateBatch(p);
-            translatedParagraphs.push(tr);
-          } else {
-            // Очень большой абзац: делим по строкам
-            const lines = p.split('\n');
-            const trLines = [];
-            for (const l of lines) {
-              trLines.push(l.trim() ? await translateBatch(l) : l);
-            }
-            translatedParagraphs.push(trLines.join('\n'));
-          }
-        }
-        translatedText = translatedParagraphs.join('\n\n');
-      }
-
-      // 3. Толерантное восстановление инлайн-кода и блоков кода (устойчиво к пробелам от переводчика)
-      for (let i = 0; i < inlineCodes.length; i++) {
-        const reg = new RegExp(`_{1,4}\\s*AG_INL_${i}\\s*_{1,4}`, 'gi');
-        translatedText = translatedText.replace(reg, () => inlineCodes[i]);
-      }
-      for (let i = 0; i < codeBlocks.length; i++) {
-        const reg = new RegExp(`_{1,4}\\s*AG_CODE_${i}\\s*_{1,4}`, 'gi');
-        translatedText = translatedText.replace(reg, () => codeBlocks[i]);
-      }
-
-      // ВАЖНО: Кэшируем ТОЛЬКО если перевод реально успешен (содержит русский текст)
-      if (/[а-яА-ЯёЁ]/.test(translatedText)) {
-        fullTextCache.set(fullText, translatedText);
-      }
-
-      return translatedText;
-    })();
-
-    inFlightRequests.set(fullText, promise);
-    try {
-      return await promise;
-    } finally {
-      inFlightRequests.delete(fullText);
     }
   }
 
-  // Экспортируем функцию и кэш в глобальный контекст window
+  // Создаем синглтон движка и экспорты обратной совместимости
+  const agEngine = new AdvancedTranslationEngine();
+  const translateLiveText = (text) => agEngine.translate(text);
+
+  window.__ag_translateEngine = agEngine;
   window.__ag_translateLiveText = translateLiveText;
-  window.__ag_fullTextCache = fullTextCache;
+  window.__ag_fullTextCache = {
+    has: (k) => agEngine.cache.get(k) !== null,
+    get: (k) => {
+      const res = agEngine.cache.get(k);
+      return res ? res.value : '';
+    },
+    set: (k, v) => agEngine.cache.set(k, v)
+  };
 
   // Хелпер для перевода заголовков блоков действий и навигации
   window.__ag_trH = function (s) {
@@ -5301,6 +5556,9 @@
   };
 
   // React-компонент, встраиваемый непосредственно в рендерер kib внутри main.js
+  const STORAGE_KEY_THOUGHT_AUTO = 'ag_thought_auto_translate';
+  const STORAGE_KEY_THOUGHT_VIEW = 'ag_thought_view_lang';
+
   window.__ag_renderThought = function (props) {
     if (!props) return null;
     const { y: React, g: MarkdownRenderer, bW: Collapsible, jib: Timer, f: SteerButton, m: SteerEditor, k: renderInner, a: thinking, b: triggerOrig, c: metadata, e: isActive, l: isRunning } = props;
@@ -5327,6 +5585,28 @@
     };
 
     try {
+      // ErrorBoundary класс для абсолютной защиты React от падений
+      if (!window.__AgThoughtErrorBoundary && React && React.Component) {
+        window.__AgThoughtErrorBoundary = class ThoughtErrorBoundary extends React.Component {
+          constructor(p) {
+            super(p);
+            this.state = { hasError: false };
+          }
+          static getDerivedStateFromError() {
+            return { hasError: true };
+          }
+          componentDidCatch(err, info) {
+            console.warn('[i18n-thought] ErrorBoundary caught error:', err, info);
+          }
+          render() {
+            if (this.state.hasError) {
+              return this.props.fallback || null;
+            }
+            return this.props.children;
+          }
+        };
+      }
+
       if (!window.__AgThoughtWrapper) {
         window.__AgThoughtWrapper = function ThoughtWrapper(p) {
           const { React, MarkdownRenderer, Collapsible, Timer, SteerButton, SteerEditor, renderInner, thinking, triggerOrig, metadata, isActive, isRunning } = p;
@@ -5334,7 +5614,7 @@
           // Автоперевод включен по умолчанию (true)
           const [autoTranslate, setAutoTranslate] = React.useState(() => {
             try {
-              const saved = localStorage.getItem(STORAGE_KEY_AUTO);
+              const saved = localStorage.getItem(STORAGE_KEY_THOUGHT_AUTO);
               return saved === null ? true : saved !== 'false';
             } catch (e) {
               return true;
@@ -5344,14 +5624,19 @@
           // Язык просмотра: 'ru' по умолчанию
           const [viewLang, setViewLang] = React.useState(() => {
             try {
-              return localStorage.getItem(STORAGE_KEY_VIEW) || 'ru';
+              return localStorage.getItem(STORAGE_KEY_THOUGHT_VIEW) || 'ru';
             } catch (e) {
               return 'ru';
             }
           });
 
           const [translated, setTranslated] = React.useState(() => {
-            return (fullTextCache && thinking && fullTextCache.has(thinking)) ? fullTextCache.get(thinking) : '';
+            try {
+              const cache = window.__ag_fullTextCache;
+              return (cache && thinking && cache.has(thinking)) ? cache.get(thinking) : '';
+            } catch (e) {
+              return '';
+            }
           });
 
           const [isTranslating, setIsTranslating] = React.useState(false);
@@ -5360,10 +5645,13 @@
           React.useEffect(() => {
             if (!thinking) return;
 
-            if (fullTextCache && fullTextCache.has(thinking)) {
-              setTranslated(fullTextCache.get(thinking));
-              return;
-            }
+            try {
+              const cache = window.__ag_fullTextCache;
+              if (cache && cache.has(thinking)) {
+                setTranslated(cache.get(thinking));
+                return;
+              }
+            } catch (e) {}
 
             if (!autoTranslate && viewLang !== 'ru') {
               return;
@@ -5377,7 +5665,9 @@
               if (cancelled) return;
               setIsTranslating(true);
               try {
-                const trFn = window.__ag_translateLiveText || translateLiveText;
+                const trFn = (typeof window !== 'undefined' && window.__ag_translateLiveText)
+                  ? window.__ag_translateLiveText
+                  : (typeof translateLiveText === 'function' ? translateLiveText : null);
                 if (typeof trFn === 'function') {
                   const res = await trFn(thinking);
                   if (!cancelled && res) {
@@ -5402,10 +5692,12 @@
             if (ev && ev.preventDefault) ev.preventDefault();
             const next = viewLang === 'ru' ? 'en' : 'ru';
             setViewLang(next);
-            try { localStorage.setItem(STORAGE_KEY_VIEW, next); } catch (e) {}
+            try { localStorage.setItem(STORAGE_KEY_THOUGHT_VIEW, next); } catch (e) {}
             if (next === 'ru' && !translated && thinking) {
               setIsTranslating(true);
-              const trFn = window.__ag_translateLiveText || translateLiveText;
+              const trFn = (typeof window !== 'undefined' && window.__ag_translateLiveText)
+                ? window.__ag_translateLiveText
+                : (typeof translateLiveText === 'function' ? translateLiveText : null);
               if (typeof trFn === 'function') {
                 trFn(thinking).then(res => {
                   if (res) setTranslated(res);
@@ -5423,10 +5715,12 @@
             if (ev && ev.preventDefault) ev.preventDefault();
             const next = !autoTranslate;
             setAutoTranslate(next);
-            try { localStorage.setItem(STORAGE_KEY_AUTO, next ? 'true' : 'false'); } catch (e) {}
+            try { localStorage.setItem(STORAGE_KEY_THOUGHT_AUTO, next ? 'true' : 'false'); } catch (e) {}
             if (next && !translated && thinking) {
               setIsTranslating(true);
-              const trFn = window.__ag_translateLiveText || translateLiveText;
+              const trFn = (typeof window !== 'undefined' && window.__ag_translateLiveText)
+                ? window.__ag_translateLiveText
+                : (typeof translateLiveText === 'function' ? translateLiveText : null);
               if (typeof trFn === 'function') {
                 trFn(thinking).then(res => {
                   if (res) setTranslated(res);
@@ -5545,16 +5839,8 @@
         };
       }
 
-      // Безопасный строковый ключ React без передачи сложных объектов
-      const safeKey = (function() {
-        if (!metadata) return 'thought-elem';
-        var sid = metadata.stepId != null ? String(metadata.stepId) : '';
-        var ts = (metadata.timestamp && metadata.timestamp.seconds != null) ? String(metadata.timestamp.seconds) : '';
-        return 'thought-' + (sid || ts || 'default');
-      })();
-
-      return React.createElement(window.__AgThoughtWrapper, {
-        key: safeKey,
+      const fallback = renderFallback(thinking);
+      const inner = React.createElement(window.__AgThoughtWrapper, {
         React,
         MarkdownRenderer,
         Collapsible,
@@ -5568,6 +5854,11 @@
         isActive,
         isRunning
       });
+
+      if (window.__AgThoughtErrorBoundary) {
+        return React.createElement(window.__AgThoughtErrorBoundary, { fallback }, inner);
+      }
+      return inner;
     } catch (outerErr) {
       console.warn('[i18n-thought] renderThought outer error:', outerErr);
       return renderFallback(thinking);
@@ -5580,240 +5871,315 @@
 // --- КОМПОНЕНТ ПЕРЕВОДА ОТВЕТОВ ИИ (AI ASSISTANT RESPONSE TRANSLATOR) ---
   const STORAGE_KEY_RESP_AUTO = 'ag_response_auto_translate';
   const STORAGE_KEY_RESP_VIEW = 'ag_response_view_lang';
+  const EVENT_RESP_AUTO_CHANGED = 'ag-response-auto-changed';
 
-  window.__ag_renderResponse = function (props) {
-    const { React, MarkdownRenderer, text, isDone, animate, stepIndex, extraChild } = props;
-
-    if (!window.__AgResponseWrapper) {
-      window.__AgResponseWrapper = function ResponseWrapper(p) {
-        const { React, MarkdownRenderer, text, isDone, animate, extraChild } = p;
-
-        const [autoTranslate, setAutoTranslate] = React.useState(() => {
-          const saved = localStorage.getItem(STORAGE_KEY_RESP_AUTO);
-          return saved === null ? true : saved !== 'false';
-        });
-
-        const [viewLang, setViewLang] = React.useState(() => {
-          return localStorage.getItem(STORAGE_KEY_RESP_VIEW) || 'ru';
-        });
-
-        const [translatedText, setTranslatedText] = React.useState(() => {
-          if (!text) return '';
-          if (window.__ag_fullTextCache && window.__ag_fullTextCache.has(text)) {
-            return window.__ag_fullTextCache.get(text);
-          }
-          return '';
-        });
-
-        const [isTranslating, setIsTranslating] = React.useState(false);
-
-        // Проверяем, на русском ли уже текст ответа
-        const isRussian = React.useMemo(() => {
-          if (!text) return true;
-          const clean = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '').trim();
-          if (!clean) return true;
-          const ru = (clean.match(/[а-яА-ЯёЁ]/g) || []).length;
-          const en = (clean.match(/[a-zA-Z]/g) || []).length;
-          return (ru > 10 && ru > en * 0.35) || (ru > 5 && en < 5);
-        }, [text]);
-
-        // Автоперевод при получении текста ответа
-        React.useEffect(() => {
-          if (isRussian) return;
-          if (!text || !text.trim()) return;
-
-          if (window.__ag_fullTextCache && window.__ag_fullTextCache.has(text)) {
-            setTranslatedText(window.__ag_fullTextCache.get(text));
-            return;
-          }
-
-          if (!autoTranslate && viewLang !== 'ru') {
-            return;
-          }
-
-          // Переводим когда шаг завершен (isDone) либо если это шаг из истории
-          if (!isDone) return;
-
-          let active = true;
-          setIsTranslating(true);
-          if (window.__ag_translateLiveText) {
-            window.__ag_translateLiveText(text).then(res => {
-              if (active && res && res !== text && /[а-яА-ЯёЁ]/.test(res)) {
-                setTranslatedText(res);
-              }
-            }).catch(err => {
-              console.warn('[i18n-resp]', err);
-            }).finally(() => {
-              if (active) setIsTranslating(false);
-            });
-          }
-
-          return () => { active = false; };
-        }, [text, isDone, autoTranslate, isRussian, viewLang]);
-
-        const handleManualTranslate = (e) => {
-          e.stopPropagation();
-          if (isTranslating) return;
-
-          if (translatedText) {
-            const next = viewLang === 'ru' ? 'en' : 'ru';
-            setViewLang(next);
-            localStorage.setItem(STORAGE_KEY_RESP_VIEW, next);
-          } else if (window.__ag_translateLiveText) {
-            setIsTranslating(true);
-            window.__ag_translateLiveText(text).then(res => {
-              if (res && res !== text && /[а-яА-ЯёЁ]/.test(res)) {
-                setTranslatedText(res);
-                setViewLang('ru');
-                localStorage.setItem(STORAGE_KEY_RESP_VIEW, 'ru');
-              }
-            }).catch(err => {
-              console.warn('[i18n-resp manual]', err);
-            }).finally(() => {
-              setIsTranslating(false);
-            });
-          }
-        };
-
-        const handleToggleAuto = (e) => {
-          e.stopPropagation();
-          const next = !autoTranslate;
-          setAutoTranslate(next);
-          localStorage.setItem(STORAGE_KEY_RESP_AUTO, next ? 'true' : 'false');
-          if (next && !translatedText && window.__ag_translateLiveText) {
-            setIsTranslating(true);
-            window.__ag_translateLiveText(text).then(res => {
-              if (res && res !== text && /[а-яА-ЯёЁ]/.test(res)) {
-                setTranslatedText(res);
-                setViewLang('ru');
-              }
-            }).finally(() => setIsTranslating(false));
-          }
-        };
-
-        const showingRu = (!isRussian && viewLang === 'ru' && !!translatedText);
-        const textToRender = showingRu ? translatedText : text;
-
-        return React.createElement("div", {
-          className: "relative group/ag-resp px-2 py-1",
-          "data-testid": "planner-response-text"
-        },
-          !isRussian && React.createElement("div", {
-            className: "flex items-center justify-end gap-1.5 mb-1 opacity-70 hover:opacity-100 transition-opacity select-none text-[11px] text-muted-foreground",
-            style: { fontFamily: "system-ui, sans-serif" }
-          },
-            React.createElement("button", {
-              type: "button",
-              onClick: handleToggleAuto,
-              title: autoTranslate ? "Автоперевод ответов ИИ включен. Кликните для выключения" : "Включить автоматический перевод ответов ИИ на русский",
-              className: `px-1.5 py-0.5 rounded border text-[10px] font-medium cursor-pointer transition-colors ${
-                autoTranslate 
-                  ? "bg-primary/10 border-primary/40 text-primary" 
-                  : "bg-muted/40 border-border text-muted-foreground hover:bg-secondary"
-              }`
-            }, autoTranslate ? "⚡ Авто: ВКЛ" : "⚡ Авто: ВЫКЛ"),
-
-            React.createElement("button", {
-              type: "button",
-              onClick: handleManualTranslate,
-              disabled: isTranslating,
-              title: showingRu ? "Показан русский перевод. Кликните для просмотра оригинала на английском" : "Перевести ответ на русский язык (код и форматирование сохраняются)",
-              className: `flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] font-medium cursor-pointer transition-colors ${
-                showingRu
-                  ? "bg-primary text-primary-foreground border-transparent shadow-xs"
-                  : "bg-muted/60 border-border hover:bg-secondary text-foreground"
-              }`
-            },
-              isTranslating 
-                ? "⏳ Перевод..." 
-                : showingRu 
-                  ? "🌐 RU (Показать оригинал)" 
-                  : "🌐 Перевести на русский"
-            )
-          ),
-          React.createElement(MarkdownRenderer, {
-            animate: animate && !showingRu
-          }, textToRender),
-          extraChild || null
-        );
-      };
-    }
-
-    return React.createElement(window.__AgResponseWrapper, {
-      React,
-      MarkdownRenderer,
-      text,
-      isDone,
-      animate,
-      stepIndex,
-      extraChild
-    });
-  };
-
-  // --- ДОПОЛНИТЕЛЬНЫЙ DOM-СКАННЕР ДЛЯ РАЗМЫШЛЕНИЙ (FALLBACK) ---
-  function scanAndEnhanceThinkingDOM() {
+  function getGlobalRespAuto() {
     try {
-      const triggers = document.querySelectorAll('[data-testid="thinking-collapsible-trigger"]');
-      for (let i = 0; i < triggers.length; i++) {
-        const trigger = triggers[i];
-        if (trigger.dataset.agEnhanced) continue;
-
-        // Если в триггере уже есть кнопки от React (по тексту RU или Авто), помечаем
-        if (trigger.querySelector('.ag-thought-btn') || trigger.querySelector('[title*="русский"], [title*="оригинал"], [title*="Автоперевод"]')) {
-          trigger.dataset.agEnhanced = 'true';
-          continue;
-        }
-
-        // Если кнопок нет (например, нативный рендер без React-обертки), добавляем плашку
-        trigger.dataset.agEnhanced = 'true';
-        const bar = document.createElement('span');
-        bar.className = 'ml-auto flex items-center gap-1.5 text-[11px] select-none';
-        bar.style.cssText = 'margin-left:auto; display:inline-flex; align-items:center; gap:6px;';
-
-        const btnRu = document.createElement('span');
-        btnRu.setAttribute('role', 'button');
-        btnRu.setAttribute('tabindex', '0');
-        btnRu.innerText = '🌐 RU';
-        btnRu.title = 'Перевести размышления на русский язык';
-        btnRu.style.cssText = 'padding:1px 6px; font-size:11px; font-weight:600; border-radius:4px; border:1px solid rgba(128,128,128,0.3); background:rgba(128,128,128,0.15); cursor:pointer; color:inherit;';
-
-        btnRu.onclick = async function(e) {
-          if (e && e.stopPropagation) e.stopPropagation();
-          const parent = trigger.closest('.relative') || trigger.parentElement;
-          if (!parent) return;
-          const content = parent.querySelector('.cursor-edit') || parent.querySelector('pre') || parent.querySelector('.overflow-y-auto');
-          if (!content) return;
-
-          if (!content._origEn) content._origEn = content.innerText;
-          if (content._isRu) {
-            content.innerText = content._origEn;
-            content._isRu = false;
-            btnRu.innerText = '🌐 RU';
-            btnRu.style.background = 'rgba(128,128,128,0.15)';
-          } else {
-            btnRu.innerText = '⚡ ...';
-            const trFn = window.__ag_translateLiveText || translateLiveText;
-            const res = await trFn(content._origEn);
-            if (res) {
-              content.innerText = res;
-              content._isRu = true;
-              btnRu.innerText = '🌐 EN';
-              btnRu.style.background = 'rgba(59,130,246,0.3)';
-            } else {
-              btnRu.innerText = '🌐 RU';
-            }
-          }
-        };
-
-        bar.appendChild(btnRu);
-        trigger.appendChild(bar);
-      }
-    } catch (domErr) {
-      // safe noop
+      const saved = localStorage.getItem(STORAGE_KEY_RESP_AUTO);
+      return saved === null ? true : saved !== 'false';
+    } catch (e) {
+      return true;
     }
   }
 
-  setInterval(scanAndEnhanceThinkingDOM, 1000);
+  function setGlobalRespAuto(val) {
+    try {
+      localStorage.setItem(STORAGE_KEY_RESP_AUTO, val ? 'true' : 'false');
+    } catch (e) {}
+    try {
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new CustomEvent(EVENT_RESP_AUTO_CHANGED, { detail: val }));
+      }
+    } catch (e) {}
+  }
+
+  window.__ag_renderResponse = function (props) {
+    if (!props) return null;
+    const { React, MarkdownRenderer, text, isDone, animate, stepIndex, extraChild } = props;
+
+    // Безопасный fallback
+    const fallback = React.createElement("div", {
+      className: "px-2 py-1",
+      "data-testid": "planner-response-text"
+    },
+      React.createElement(MarkdownRenderer, { animate: animate || false }, text || ""),
+      extraChild || null
+    );
+
+    try {
+      // ErrorBoundary для полной защиты от любых сбоев в React Fiber
+      if (!window.__AgResponseErrorBoundary && React && React.Component) {
+        window.__AgResponseErrorBoundary = class ResponseErrorBoundary extends React.Component {
+          constructor(p) {
+            super(p);
+            this.state = { hasError: false };
+          }
+          static getDerivedStateFromError() {
+            return { hasError: true };
+          }
+          componentDidCatch(err, info) {
+            console.warn('[i18n-resp] ErrorBoundary caught error:', err, info);
+          }
+          render() {
+            if (this.state.hasError) {
+              return this.props.fallback || null;
+            }
+            return this.props.children;
+          }
+        };
+      }
+
+      if (!window.__AgResponseWrapper) {
+        window.__AgResponseWrapper = function ResponseWrapper(p) {
+          const { React, MarkdownRenderer, text, isDone, animate, extraChild } = p;
+
+          // Глобальный автоперевод всех сообщений
+          const [autoTranslate, setAutoTranslate] = React.useState(getGlobalRespAuto);
+
+          React.useEffect(() => {
+            const onAutoChange = (e) => {
+              if (e && e.detail !== undefined) {
+                setAutoTranslate(!!e.detail);
+              }
+            };
+            if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+              window.addEventListener(EVENT_RESP_AUTO_CHANGED, onAutoChange);
+              return () => {
+                window.removeEventListener(EVENT_RESP_AUTO_CHANGED, onAutoChange);
+              };
+            }
+          }, []);
+
+          // Язык просмотра: 'ru' по умолчанию
+          const [viewLang, setViewLang] = React.useState(() => {
+            try {
+              return localStorage.getItem(STORAGE_KEY_RESP_VIEW) || 'ru';
+            } catch (e) {
+              return 'ru';
+            }
+          });
+
+          const [translatedText, setTranslatedText] = React.useState(() => {
+            if (!text) return '';
+            try {
+              const cache = window.__ag_fullTextCache;
+              if (cache && cache.has(text)) {
+                return cache.get(text);
+              }
+            } catch (e) {}
+            return '';
+          });
+
+          const [isTranslating, setIsTranslating] = React.useState(false);
+
+          // Проверяем, является ли текст исходно полностью русским
+          const isOriginallyRussian = React.useMemo(() => {
+            if (!text) return false;
+            const clean = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '').trim();
+            if (!clean) return false;
+            const ru = (clean.match(/[а-яА-ЯёЁ]/g) || []).length;
+            const en = (clean.match(/[a-zA-Z]/g) || []).length;
+            return ru > 15 && ru > en * 1.5;
+          }, [text]);
+
+          // Автоперевод с умным debounce (стриминг 400мс, завершенный ответ 50мс)
+          React.useEffect(() => {
+            if (isOriginallyRussian) return;
+            if (!text || !text.trim()) return;
+
+            try {
+              const cache = window.__ag_fullTextCache;
+              if (cache && cache.has(text)) {
+                setTranslatedText(cache.get(text));
+                return;
+              }
+            } catch (e) {}
+
+            if (!autoTranslate && viewLang !== 'ru') {
+              return;
+            }
+
+            let cancelled = false;
+            const delay = isDone ? 50 : 400;
+
+            const timer = setTimeout(async () => {
+              if (cancelled) return;
+              setIsTranslating(true);
+              try {
+                const trFn = (typeof window !== 'undefined' && window.__ag_translateLiveText)
+                  ? window.__ag_translateLiveText
+                  : (typeof translateLiveText === 'function' ? translateLiveText : null);
+                if (typeof trFn === 'function') {
+                  const res = await trFn(text);
+                  if (!cancelled && res && res !== text && /[а-яА-ЯёЁ]/.test(res)) {
+                    setTranslatedText(res);
+                  }
+                }
+              } catch (err) {
+                console.warn('[i18n-resp]', err);
+              } finally {
+                if (!cancelled) setIsTranslating(false);
+              }
+            }, delay);
+
+            return () => {
+              cancelled = true;
+              clearTimeout(timer);
+            };
+          }, [text, isDone, autoTranslate, isOriginallyRussian, viewLang]);
+
+          const handleToggleLang = (e) => {
+            if (e && e.stopPropagation) e.stopPropagation();
+            if (e && e.preventDefault) e.preventDefault();
+            if (isTranslating) return;
+
+            if (isOriginallyRussian) return;
+
+            if (translatedText) {
+              const next = viewLang === 'ru' ? 'en' : 'ru';
+              setViewLang(next);
+              try { localStorage.setItem(STORAGE_KEY_RESP_VIEW, next); } catch (err) {}
+            } else {
+              setIsTranslating(true);
+              const trFn = (typeof window !== 'undefined' && window.__ag_translateLiveText)
+                ? window.__ag_translateLiveText
+                : (typeof translateLiveText === 'function' ? translateLiveText : null);
+              if (typeof trFn === 'function') {
+                trFn(text).then(res => {
+                  if (res && res !== text && /[а-яА-ЯёЁ]/.test(res)) {
+                    setTranslatedText(res);
+                    setViewLang('ru');
+                    try { localStorage.setItem(STORAGE_KEY_RESP_VIEW, 'ru'); } catch (err) {}
+                  }
+                }).catch(err => {
+                  console.warn('[i18n-resp manual]', err);
+                }).finally(() => {
+                  setIsTranslating(false);
+                });
+              } else {
+                setIsTranslating(false);
+              }
+            }
+          };
+
+          const handleToggleAuto = (e) => {
+            if (e && e.stopPropagation) e.stopPropagation();
+            if (e && e.preventDefault) e.preventDefault();
+            const next = !autoTranslate;
+            setGlobalRespAuto(next);
+
+            if (next && !translatedText && !isOriginallyRussian) {
+              setIsTranslating(true);
+              const trFn = (typeof window !== 'undefined' && window.__ag_translateLiveText)
+                ? window.__ag_translateLiveText
+                : (typeof translateLiveText === 'function' ? translateLiveText : null);
+              if (typeof trFn === 'function') {
+                trFn(text).then(res => {
+                  if (res && res !== text && /[а-яА-ЯёЁ]/.test(res)) {
+                    setTranslatedText(res);
+                    setViewLang('ru');
+                  }
+                }).finally(() => setIsTranslating(false));
+              } else {
+                setIsTranslating(false);
+              }
+            }
+          };
+
+          const showingRu = (!isOriginallyRussian && viewLang === 'ru' && !!translatedText);
+          const textToRender = showingRu ? translatedText : text;
+
+          return React.createElement("div", {
+            className: "relative group/ag-resp px-2 py-1",
+            "data-testid": "planner-response-text"
+          },
+            // Панель управления переводом (всегда доступна для пользователя)
+            React.createElement("div", {
+              className: "flex items-center justify-end gap-1.5 mb-1.5 select-none text-[11px]",
+              style: { fontFamily: "system-ui, sans-serif" }
+            },
+              isTranslating ? React.createElement("span", {
+                style: { fontSize: "11px", color: "#f59e0b", fontWeight: "500", display: "inline-flex", alignItems: "center", gap: "4px" },
+                title: "Идёт потоковый перевод ответа..."
+              }, "⏳ перевод...") : null,
+
+              // Кнопка автоперевода всех сообщений [⚡ Авто: ВКЛ / ВЫКЛ]
+              React.createElement("span", {
+                role: "button",
+                tabIndex: 0,
+                onClick: handleToggleAuto,
+                className: "ag-resp-btn ag-resp-auto",
+                style: {
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "2px 7px",
+                  fontSize: "10px",
+                  fontWeight: "500",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  whiteSpace: "nowrap",
+                  backgroundColor: autoTranslate ? "rgba(245, 158, 11, 0.2)" : "rgba(128,128,128,0.15)",
+                  color: autoTranslate ? "#f59e0b" : "inherit",
+                  border: autoTranslate ? "1px solid rgba(245, 158, 11, 0.5)" : "1px solid rgba(128,128,128,0.3)",
+                  transition: "all 0.15s ease"
+                },
+                title: autoTranslate ? "Автоперевод всех сообщений ВКЛЮЧЁН (кликните для отключения)" : "Автоперевод всех сообщений ВЫКЛЮЧЕН (кликните для включения)"
+              }, autoTranslate ? "⚡ Авто: ВКЛ" : "⚡ Авто: ВЫКЛ"),
+
+              // Кнопка переключения языка [🌐 RU / EN]
+              !isOriginallyRussian ? React.createElement("span", {
+                role: "button",
+                tabIndex: 0,
+                onClick: handleToggleLang,
+                className: "ag-resp-btn ag-resp-lang",
+                style: {
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "2px 8px",
+                  fontSize: "11px",
+                  fontWeight: "600",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  whiteSpace: "nowrap",
+                  backgroundColor: showingRu ? "#2563eb" : "rgba(128,128,128,0.2)",
+                  color: showingRu ? "#ffffff" : "inherit",
+                  border: showingRu ? "1px solid #3b82f6" : "1px solid rgba(128,128,128,0.35)",
+                  transition: "all 0.15s ease"
+                },
+                title: showingRu ? "Показан русский перевод. Кликните для просмотра оригинала на английском" : "Показан оригинал. Кликните для перевода на русский"
+              }, showingRu ? "🌐 RU (Оригинал)" : (translatedText ? "🌐 RU" : "🌐 Перевести")) : null
+            ),
+            React.createElement(MarkdownRenderer, {
+              animate: animate && !showingRu
+            }, textToRender),
+            extraChild || null
+          );
+        };
+      }
+
+      const inner = React.createElement(window.__AgResponseWrapper, {
+        React,
+        MarkdownRenderer,
+        text,
+        isDone,
+        animate,
+        stepIndex,
+        extraChild
+      });
+
+      if (window.__AgResponseErrorBoundary) {
+        return React.createElement(window.__AgResponseErrorBoundary, { fallback }, inner);
+      }
+      return inner;
+    } catch (e) {
+      console.warn('[i18n-resp outer error]', e);
+      return fallback;
+    }
+  };
+
+  // DOM-сканнер отключен во избежание конфликта с React reconciliation
 
   console.log('[i18n-ru] Antigravity 2.0 100% Russian Localization active (4380 terms).');
 })();
