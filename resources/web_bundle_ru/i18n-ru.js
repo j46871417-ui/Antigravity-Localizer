@@ -5561,7 +5561,19 @@
 
   window.__ag_renderThought = function (props) {
     if (!props) return null;
-    const { y: React, g: MarkdownRenderer, bW: Collapsible, jib: Timer, f: SteerButton, m: SteerEditor, k: renderInner, a: thinking, b: triggerOrig, c: metadata, e: isActive, l: isRunning } = props;
+    const React = props.React || props.z || props.y;
+    const MarkdownRenderer = props.MarkdownRenderer || props.g || props.f;
+    const Collapsible = props.Collapsible || props.sW || props.bW;
+    const SteerButton = props.SteerButton || props.f;
+    const SteerEditor = props.SteerEditor || props.m;
+    const renderInner = props.renderInner || props.k;
+    const thinking = props.thinking !== undefined ? props.thinking : props.a;
+    const triggerOrig = props.triggerOrig !== undefined ? props.triggerOrig : props.b;
+    const metadata = props.metadata || props.c;
+    const isActive = props.isActive !== undefined ? props.isActive : props.e;
+    const isRunning = props.isRunning !== undefined ? props.isRunning : props.l;
+
+    if (!React || !Collapsible) return null;
 
     // Безопасный fallback на случай любой непредвиденной ошибки в React-дереве
     const renderFallback = (contentToRender) => {
@@ -5609,7 +5621,17 @@
 
       if (!window.__AgThoughtWrapper) {
         window.__AgThoughtWrapper = function ThoughtWrapper(p) {
-          const { React, MarkdownRenderer, Collapsible, Timer, SteerButton, SteerEditor, renderInner, thinking, triggerOrig, metadata, isActive, isRunning } = p;
+          const React = p.React || p.z || p.y;
+          const MarkdownRenderer = p.MarkdownRenderer || p.g || p.f;
+          const Collapsible = p.Collapsible || p.sW || p.bW;
+          const SteerButton = p.SteerButton || p.f;
+          const SteerEditor = p.SteerEditor || p.m;
+          const renderInner = p.renderInner || p.k;
+          const thinking = p.thinking !== undefined ? p.thinking : p.a;
+          const triggerOrig = p.triggerOrig !== undefined ? p.triggerOrig : p.b;
+          const metadata = p.metadata || p.c;
+          const isActive = p.isActive !== undefined ? p.isActive : p.e;
+          const isRunning = p.isRunning !== undefined ? p.isRunning : p.l;
 
           // Автоперевод включен по умолчанию (true)
           const [autoTranslate, setAutoTranslate] = React.useState(() => {
@@ -5818,6 +5840,7 @@
             const customInner = (txt, run) => React.createElement("div", {
               className: "cursor-edit group relative text-secondary-foreground pl-2"
             }, React.createElement(MarkdownRenderer, { animate: run }, txt));
+            const innerRenderer = renderInner || customInner;
 
             return React.createElement(Collapsible, {
               trigger: customTrigger,
@@ -5829,8 +5852,8 @@
             },
               SteerButton && React.createElement(SteerButton, { metadata: metadata, isRunning: isRunning }),
               SteerEditor
-                ? React.createElement(SteerEditor, { metadata: metadata, thinking: textToRender, isRunning: isRunning }, customInner)
-                : customInner(textToRender, isRunning)
+                ? React.createElement(SteerEditor, { metadata: metadata, thinking: textToRender, isRunning: isRunning }, innerRenderer)
+                : (renderInner ? renderInner(textToRender, isRunning) : customInner(textToRender, isRunning))
             );
           } catch (renderError) {
             console.warn('[i18n-thought] wrapper inner render failed:', renderError);
@@ -5895,7 +5918,15 @@
 
   window.__ag_renderResponse = function (props) {
     if (!props) return null;
-    const { React, MarkdownRenderer, text, isDone, animate, stepIndex, extraChild } = props;
+    const React = props.React || props.z || props.y;
+    const MarkdownRenderer = props.MarkdownRenderer || props.f || (props.renderers && props.renderers.markdown);
+    const text = props.text !== undefined ? props.text : (props.h !== undefined ? props.h : props.c);
+    const isDone = props.isDone !== undefined ? props.isDone : !0;
+    const animate = props.animate !== undefined ? props.animate : !1;
+    const stepIndex = props.stepIndex !== undefined ? props.stepIndex : props.e;
+    const extraChild = props.extraChild || null;
+
+    if (!React || !MarkdownRenderer) return null;
 
     // Безопасный fallback
     const fallback = React.createElement("div", {
@@ -5931,7 +5962,12 @@
 
       if (!window.__AgResponseWrapper) {
         window.__AgResponseWrapper = function ResponseWrapper(p) {
-          const { React, MarkdownRenderer, text, isDone, animate, extraChild } = p;
+          const React = p.React || p.z || p.y;
+          const MarkdownRenderer = p.MarkdownRenderer || p.f || (p.renderers && p.renderers.markdown);
+          const text = p.text !== undefined ? p.text : (p.h !== undefined ? p.h : p.c);
+          const isDone = p.isDone !== undefined ? p.isDone : !0;
+          const animate = p.animate !== undefined ? p.animate : !1;
+          const extraChild = p.extraChild || null;
 
           // Глобальный автоперевод всех сообщений
           const [autoTranslate, setAutoTranslate] = React.useState(getGlobalRespAuto);
