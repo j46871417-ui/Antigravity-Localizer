@@ -8,6 +8,12 @@
   'use strict';
 
   const DICT = {
+  "Working": "В процессе",
+  "Done": "Готово",
+  "Explored files": "Исследованы файлы",
+  "Exploring files": "Исследование файлов",
+  "Edited files": "Изменены файлы",
+  "Editing files": "Редактирование файлов",
   "(Specific to this client's truncation and pagination)": "(Относится к усечению и пагинации этого клиента)",
   "Access to the browser agent tools is blocked by your organization's admin controls policy.": "Доступ к инструментам браузерного агента заблокирован политикой администратора вашей организации.",
   "Can't open the Drive link?": "Не удается открыть ссылку на Google Диск?",
@@ -4607,7 +4613,148 @@
       });
   }
 
+  function formatCountRu(count, one, few, many) {
+    const n = Math.abs(count) % 100;
+    const n1 = n % 10;
+    if (n > 10 && n < 20) return `${count} ${many}`;
+    if (n1 > 1 && n1 < 5) return `${count} ${few}`;
+    if (n1 === 1) return `${count} ${one}`;
+    return `${count} ${many}`;
+  }
+
+  const NOUN_FORMS = {
+    file: ['файл', 'файла', 'файлов'],
+    files: ['файл', 'файла', 'файлов'],
+    folder: ['папка', 'папки', 'папок'],
+    folders: ['папка', 'папки', 'папок'],
+    edit: ['правка', 'правки', 'правок'],
+    edits: ['правка', 'правки', 'правок'],
+    search: ['поиск', 'поиска', 'поисков'],
+    searches: ['поиск', 'поиска', 'поисков'],
+    command: ['команда', 'команды', 'команд'],
+    commands: ['команда', 'команды', 'команд'],
+    task: ['задача', 'задачи', 'задач'],
+    tasks: ['задача', 'задачи', 'задач'],
+    page: ['страница', 'страницы', 'страниц'],
+    pages: ['страница', 'страницы', 'страниц'],
+    browser: ['браузер', 'браузера', 'браузеров'],
+    browsers: ['браузер', 'браузера', 'браузеров'],
+    image: ['изображение', 'изображения', 'изображений'],
+    images: ['изображение', 'изображения', 'изображений'],
+    action: ['действие', 'действия', 'действий'],
+    actions: ['действие', 'действия', 'действий'],
+    artifact: ['артефакт', 'артефакта', 'артефактов'],
+    artifacts: ['артефакт', 'артефакта', 'артефактов']
+  };
+
+  function translateItemRu(itemStr) {
+    const trimmed = itemStr.trim();
+    const m = trimmed.match(/^(\d+)\s+([a-zA-Z]+)$/);
+    if (m) {
+      const count = parseInt(m[1], 10);
+      const noun = m[2].toLowerCase();
+      const forms = NOUN_FORMS[noun];
+      if (forms) return formatCountRu(count, forms[0], forms[1], forms[2]);
+      return trimmed;
+    }
+    const lower = trimmed.toLowerCase();
+    if (lower === 'files') return 'файлы';
+    if (lower === 'file') return 'файл';
+    if (lower === 'folders') return 'папки';
+    if (lower === 'folder') return 'папка';
+    if (lower === 'edits') return 'правки';
+    if (lower === 'edit') return 'правка';
+    if (lower === 'commands') return 'команды';
+    if (lower === 'command') return 'команда';
+    if (lower === 'tasks') return 'задачи';
+    if (lower === 'task') return 'задача';
+    return trimmed;
+  }
+
+  function translateCortexSummary(text) {
+    if (!text || typeof text !== 'string') return text;
+    const trimmed = text.trim();
+
+    if (trimmed === 'Working') return 'В процессе';
+    if (trimmed === 'Done') return 'Готово';
+    if (trimmed === 'Explored files') return 'Исследованы файлы';
+    if (trimmed === 'Exploring files') return 'Исследование файлов';
+    if (trimmed === 'Edited files') return 'Изменены файлы';
+    if (trimmed === 'Editing files') return 'Редактирование файлов';
+
+    const parts = trimmed.split(/,\s*/);
+    let hasMatch = false;
+    const translatedParts = parts.map((part, index) => {
+      if (index === 0) {
+        const mExplored = part.match(/^(Explored|Exploring)\s+(.+)$/i);
+        if (mExplored) {
+          hasMatch = true;
+          const prefix = mExplored[1].toLowerCase() === 'exploring' ? 'Исследование' : 'Исследовано';
+          return `${prefix} ${translateItemRu(mExplored[2])}`;
+        }
+
+        const mEdited = part.match(/^(Edited|Editing)\s+(.+)$/i);
+        if (mEdited) {
+          hasMatch = true;
+          const prefix = mEdited[1].toLowerCase() === 'editing' ? 'Редактирование' : 'Изменено';
+          return `${prefix} ${translateItemRu(mEdited[2])}`;
+        }
+
+        const mRan = part.match(/^(Ran|Running)\s+(.+)$/i);
+        if (mRan) {
+          hasMatch = true;
+          const isRunning = mRan[1].toLowerCase() === 'running';
+          const rest = mRan[2];
+          const cmdCountMatch = rest.match(/^(\d+)\s+commands?$/i);
+          if (cmdCountMatch) {
+            const count = parseInt(cmdCountMatch[1], 10);
+            const prefix = isRunning ? 'Выполняется' : 'Выполнено';
+            return `${prefix} ${formatCountRu(count, 'команда', 'команды', 'команд')}`;
+          }
+          return `${isRunning ? 'Запуск' : 'Запущено'}: ${rest}`;
+        }
+      }
+
+      const mRanSub = part.match(/^(ran|running)\s+(.+)$/i);
+      if (mRanSub) {
+        hasMatch = true;
+        const isRunning = mRanSub[1].toLowerCase() === 'running';
+        const rest = mRanSub[2];
+        const cmdCountMatch = rest.match(/^(\d+)\s+commands?$/i);
+        if (cmdCountMatch) {
+          const count = parseInt(cmdCountMatch[1], 10);
+          const prefix = isRunning ? (index === 0 ? 'Выполняется' : 'выполняется') : (index === 0 ? 'Выполнено' : 'выполнено');
+          return `${prefix} ${formatCountRu(count, 'команда', 'команды', 'команд')}`;
+        }
+        return `${isRunning ? 'запуск' : 'запущено'}: ${rest}`;
+      }
+
+      const mCount = part.match(/^(\d+)\s+([a-zA-Z]+)$/);
+      if (mCount && NOUN_FORMS[mCount[2].toLowerCase()]) {
+        hasMatch = true;
+        return translateItemRu(part);
+      }
+
+      return part;
+    });
+
+    if (hasMatch) {
+      return translatedParts.join(', ');
+    }
+    return text;
+  }
+
   const DYNAMIC = [
+    // Динамический перевод сводок действий Cortex (Explored X files, Y tasks, ran Z commands)
+    {
+      re: /^(?:Explored|Exploring|Edited|Editing|Ran|Running)\s+.+$/i,
+      fn: (m) => translateCortexSummary(m[0])
+    },
+    {
+      re: /^\d+\s+[a-zA-Z]+(?:\s*,\s*\d+\s+[a-zA-Z]+)*(?:\s*,\s*(?:ran|running)\s+.+)?$/i,
+      fn: (m) => translateCortexSummary(m[0])
+    },
+
     // Квоты и лимиты моделей
     {
       re: /^You have used (some|all) of your weekly limit,?\s*it will (?:fully\s*)?(?:refresh|reset) in\s*(.+?)\.?$/i,
@@ -5172,40 +5319,72 @@
   class MarkdownShield {
     constructor() {
       this.slots = new Map();
-      this.blockIds = new Set();
       this.counter = 0;
     }
 
     mask(text) {
       this.slots.clear();
-      this.blockIds.clear();
       this.counter = 0;
-      let masked = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, (match) => {
+      if (!text || typeof text !== 'string') return text;
+
+      let masked = text;
+
+      // 1. Защита блоков кода (включая стриминговые незакрытые блоки)
+      masked = masked.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~|```[a-zA-Z0-9_-]*\n[\s\S]*$)/g, (match) => {
         const id = this.counter++;
-        this.slots.set(id, match);
-        this.blockIds.add(id);
-        return `\n\n___AGBLK_${id}___\n\n`;
+        this.slots.set(id, { type: 'BLOCK', content: match });
+        return `\n\n⟦AGB_${id}⟧\n\n`;
       });
-      masked = masked.replace(/(`[^`\n]{1,120}`)/g, (match) => {
+
+      // 2. Защита URL в Markdown-ссылках [текст](url)
+      masked = masked.replace(/(\[[^\]\n]+\])\((https?:\/\/[^\s)]+|file:\/\/\/[^\s)]+)\)/g, (match, anchor, url) => {
         const id = this.counter++;
-        this.slots.set(id, match);
-        return ` ___AGINL_${id}___ `;
+        this.slots.set(id, { type: 'URL', content: url });
+        return `${anchor}(⟦AGU_${id}⟧)`;
       });
+
+      // 3. Защита инлайн-кода `code`
+      masked = masked.replace(/(`[^`\n]{1,150}`)/g, (match) => {
+        const id = this.counter++;
+        this.slots.set(id, { type: 'INLINE', content: match });
+        return `⟦AGI_${id}⟧`;
+      });
+
+      // 4. Защита переносов строк в списках (чтобы Google Translate не склеивал пункты)
+      masked = masked.replace(/\n(?=(\s*[-*+]\s|\s*\d+\.\s))/g, '\n⟦NL⟧');
+
       return masked;
     }
 
     unmask(translatedText) {
-      if (!translatedText || this.slots.size === 0) return translatedText;
-      const tolerantPattern = /(?:[«⟦\[\("'_~\s-]*)(?:AG|АГ)\s*(?:BLK|INL|CODE|TOKENB|TOKENI|БЛК|ИНЛ|КОД)?[_\s-]*(\d+)(?:[»⟧\]\)"'_~\s-]*)/gi;
-      let res = translatedText.replace(tolerantPattern, (match, idStr) => {
+      if (!translatedText || typeof translatedText !== 'string') return translatedText;
+
+      // 1. Восстановление переносов строк в списках (NL и НЛ)
+      let res = translatedText.replace(/[ \t]*⟦\s*(?:NL|НЛ)\s*⟧[ \t]*/gi, '\n');
+
+      // 2. Восстановление точных плейсхолдеров ⟦AG[B/I/U]_id⟧
+      const placeholderRegex = /⟦\s*(?:AG|АГ)?[_]?(?:B|I|U|BLK|INL)?_?(\d+)\s*⟧/gi;
+      res = res.replace(placeholderRegex, (match, idStr) => {
         const id = parseInt(idStr, 10);
         if (!this.slots.has(id)) return match;
-        const orig = this.slots.get(id);
-        if (this.blockIds.has(id)) {
-          return `\n\n${orig}\n\n`;
+        const slot = this.slots.get(id);
+        if (slot.type === 'BLOCK') {
+          return `\n\n${slot.content}\n\n`;
         }
-        return ` ${orig} `;
+        if (slot.type === 'URL') {
+          return slot.content;
+        }
+        return `${slot.content}`;
       });
+
+      // 3. Совместимость с устаревшими плейсхолдерами
+      res = res.replace(/___(?:AG|АГ)(?:BLK|INL)_(\d+)___/gi, (match, idStr) => {
+        const id = parseInt(idStr, 10);
+        if (!this.slots.has(id)) return match;
+        const slot = this.slots.get(id);
+        return slot.content;
+      });
+
       return res.replace(/\n{3,}/g, '\n\n').trim();
     }
   }
@@ -5555,10 +5734,54 @@
     return res;
   };
 
-  // React-компонент, встраиваемый непосредственно в рендерер kib внутри main.js
-  const STORAGE_KEY_THOUGHT_AUTO = 'ag_thought_auto_translate';
+  // --- ЕДИНЫЕ НАСТРОЙКИ АВТОПЕРЕВОДА (UNIFIED AUTO-TRANSLATE SETTINGS) ---
+  const STORAGE_KEY_SHARED_AUTO = 'ag_auto_translate';
+  const EVENT_SHARED_AUTO_CHANGED = 'ag-auto-translate-changed';
   const STORAGE_KEY_THOUGHT_VIEW = 'ag_thought_view_lang';
+  const STORAGE_KEY_RESP_VIEW = 'ag_response_view_lang';
 
+  function getGlobalAutoTranslate() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_SHARED_AUTO);
+      if (saved !== null) return saved !== 'false';
+      const old1 = localStorage.getItem('ag_thought_auto_translate');
+      if (old1 !== null) return old1 !== 'false';
+      const old2 = localStorage.getItem('ag_response_auto_translate');
+      if (old2 !== null) return old2 !== 'false';
+      return true;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function setGlobalAutoTranslate(val) {
+    try {
+      localStorage.setItem(STORAGE_KEY_SHARED_AUTO, val ? 'true' : 'false');
+      localStorage.setItem('ag_thought_auto_translate', val ? 'true' : 'false');
+      localStorage.setItem('ag_response_auto_translate', val ? 'true' : 'false');
+    } catch (e) {}
+    try {
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new CustomEvent(EVENT_SHARED_AUTO_CHANGED, { detail: !!val }));
+      }
+    } catch (e) {}
+  }
+
+  // Очистка любых устаревших DOM-кнопок перевода, внедренных старыми скриптами
+  if (typeof document !== 'undefined') {
+    const purgeOldDomToolbars = () => {
+      try {
+        const old = document.querySelectorAll('.ag-thought-toolbar, .ag-btn-ru-en, .ag-btn-auto');
+        for (let i = 0; i < old.length; i++) {
+          old[i].remove();
+        }
+      } catch (_) {}
+    };
+    purgeOldDomToolbars();
+    setInterval(purgeOldDomToolbars, 1000);
+  }
+
+  // React-компонент, встраиваемый непосредственно в рендерер kib внутри main.js
   window.__ag_renderThought = function (props) {
     if (!props) return null;
     const React = props.React || props.z || props.y;
@@ -5633,15 +5856,20 @@
           const isActive = p.isActive !== undefined ? p.isActive : p.e;
           const isRunning = p.isRunning !== undefined ? p.isRunning : p.l;
 
-          // Автоперевод включен по умолчанию (true)
-          const [autoTranslate, setAutoTranslate] = React.useState(() => {
-            try {
-              const saved = localStorage.getItem(STORAGE_KEY_THOUGHT_AUTO);
-              return saved === null ? true : saved !== 'false';
-            } catch (e) {
-              return true;
+          // Синхронизированный автоперевод
+          const [autoTranslate, setAutoTranslate] = React.useState(getGlobalAutoTranslate);
+
+          React.useEffect(() => {
+            const onAutoChange = (e) => {
+              if (e && e.detail !== undefined) {
+                setAutoTranslate(!!e.detail);
+              }
+            };
+            if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+              window.addEventListener(EVENT_SHARED_AUTO_CHANGED, onAutoChange);
+              return () => window.removeEventListener(EVENT_SHARED_AUTO_CHANGED, onAutoChange);
             }
-          });
+          }, []);
 
           // Язык просмотра: 'ru' по умолчанию
           const [viewLang, setViewLang] = React.useState(() => {
@@ -5736,8 +5964,7 @@
             if (ev && ev.stopPropagation) ev.stopPropagation();
             if (ev && ev.preventDefault) ev.preventDefault();
             const next = !autoTranslate;
-            setAutoTranslate(next);
-            try { localStorage.setItem(STORAGE_KEY_THOUGHT_AUTO, next ? 'true' : 'false'); } catch (e) {}
+            setGlobalAutoTranslate(next);
             if (next && !translated && thinking) {
               setIsTranslating(true);
               const trFn = (typeof window !== 'undefined' && window.__ag_translateLiveText)
@@ -5765,35 +5992,64 @@
           }
 
           try {
-            // Тулбар с кнопками [🌐 RU / EN] и [⚡ Авто: ВКЛ / ВЫКЛ] (span для идеальной совместимости с родительским button)
+            // Тулбар с кнопками [🌐 RU / EN] и [⚡ Авто: ВКЛ / ВЫКЛ] (строго в одну строку с triggerOrig)
             const customTrigger = React.createElement("span", {
               className: "ag-thought-trigger select-none",
               style: {
                 display: "flex",
+                flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                flex: "1 1 auto",
+                width: "100%",
                 minWidth: 0,
-                marginRight: "6px"
+                flexWrap: "nowrap",
+                marginRight: "4px"
               }
             },
               React.createElement("span", {
-                style: { display: "inline-flex", alignItems: "center", gap: "8px", minWidth: 0 }
+                style: {
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  minWidth: 0,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis"
+                }
               },
                 customHeaderContent,
                 isTranslating ? React.createElement("span", {
                   style: { fontSize: "11px", color: "#f59e0b", fontWeight: "500", display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0 },
-                  title: "Идёт потоковый перевод размышлений на лету..."
-                }, "⚡ перевод...") : null
+                  title: "Идёт перевод размышлений..."
+                }, "⏳ перевод...") : null
               ),
               React.createElement("span", {
-                style: { display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, marginLeft: "8px" },
-                onClick: (ev) => { if (ev && ev.stopPropagation) ev.stopPropagation(); }
+                style: {
+                  display: "inline-flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: "6px",
+                  flexShrink: 0,
+                  marginLeft: "auto",
+                  whiteSpace: "nowrap"
+                },
+                onClick: (ev) => {
+                  if (ev) {
+                    if (ev.stopPropagation) ev.stopPropagation();
+                    if (ev.preventDefault) ev.preventDefault();
+                  }
+                }
               },
                 React.createElement("span", {
                   role: "button",
                   tabIndex: 0,
-                  onClick: handleToggleLang,
+                  onClick: (ev) => {
+                    if (ev) {
+                      if (ev.stopPropagation) ev.stopPropagation();
+                      if (ev.preventDefault) ev.preventDefault();
+                    }
+                    handleToggleLang(ev);
+                  },
                   className: "ag-thought-btn ag-thought-lang",
                   style: {
                     display: "inline-flex",
@@ -5805,17 +6061,25 @@
                     cursor: "pointer",
                     userSelect: "none",
                     whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    lineHeight: "1.2",
                     backgroundColor: isShowingRu ? "#2563eb" : "rgba(128,128,128,0.2)",
                     color: isShowingRu ? "#ffffff" : "inherit",
                     border: isShowingRu ? "1px solid #3b82f6" : "1px solid rgba(128,128,128,0.35)",
                     transition: "all 0.15s ease"
                   },
-                  title: isShowingRu ? "Показан русский перевод. Кликните для просмотра оригинала на английском" : "Показан оригинал. Кликните для перевода на русский"
+                  title: isShowingRu ? "Показан русский перевод. Кликните для оригинала на английском" : "Показан оригинал. Кликните для перевода на русский"
                 }, isShowingRu ? "🌐 RU" : "🌐 EN"),
                 React.createElement("span", {
                   role: "button",
                   tabIndex: 0,
-                  onClick: handleToggleAuto,
+                  onClick: (ev) => {
+                    if (ev) {
+                      if (ev.stopPropagation) ev.stopPropagation();
+                      if (ev.preventDefault) ev.preventDefault();
+                    }
+                    handleToggleAuto(ev);
+                  },
                   className: "ag-thought-btn ag-thought-auto",
                   style: {
                     display: "inline-flex",
@@ -5827,6 +6091,8 @@
                     cursor: "pointer",
                     userSelect: "none",
                     whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    lineHeight: "1.2",
                     backgroundColor: autoTranslate ? "rgba(245, 158, 11, 0.2)" : "rgba(128,128,128,0.15)",
                     color: autoTranslate ? "#f59e0b" : "inherit",
                     border: autoTranslate ? "1px solid rgba(245, 158, 11, 0.5)" : "1px solid rgba(128,128,128,0.3)",
@@ -5839,8 +6105,18 @@
 
             const customInner = (txt, run) => React.createElement("div", {
               className: "cursor-edit group relative text-secondary-foreground pl-2"
-            }, React.createElement(MarkdownRenderer, { animate: run }, txt));
-            const innerRenderer = renderInner || customInner;
+            }, React.createElement(MarkdownRenderer, { animate: run }, (txt !== undefined && txt !== null && txt !== '') ? txt : (thinking || "")));
+            const innerRenderer = (txt, run) => {
+              const safeText = (txt !== undefined && txt !== null && txt !== '') ? txt : (thinking || "");
+              if (renderInner) {
+                try {
+                  return renderInner(safeText, run);
+                } catch (e) {
+                  return customInner(safeText, run);
+                }
+              }
+              return customInner(safeText, run);
+            };
 
             return React.createElement(Collapsible, {
               trigger: customTrigger,
@@ -5853,7 +6129,7 @@
               SteerButton && React.createElement(SteerButton, { metadata: metadata, isRunning: isRunning }),
               SteerEditor
                 ? React.createElement(SteerEditor, { metadata: metadata, thinking: textToRender, isRunning: isRunning }, innerRenderer)
-                : (renderInner ? renderInner(textToRender, isRunning) : customInner(textToRender, isRunning))
+                : innerRenderer(textToRender, isRunning)
             );
           } catch (renderError) {
             console.warn('[i18n-thought] wrapper inner render failed:', renderError);
@@ -5867,12 +6143,11 @@
         React,
         MarkdownRenderer,
         Collapsible,
-        Timer,
         SteerButton,
         SteerEditor,
         renderInner,
         thinking,
-        triggerOrig: props.b,
+        triggerOrig,
         metadata,
         isActive,
         isRunning
@@ -5892,28 +6167,15 @@
 
 
 // --- КОМПОНЕНТ ПЕРЕВОДА ОТВЕТОВ ИИ (AI ASSISTANT RESPONSE TRANSLATOR) ---
-  const STORAGE_KEY_RESP_AUTO = 'ag_response_auto_translate';
-  const STORAGE_KEY_RESP_VIEW = 'ag_response_view_lang';
-  const EVENT_RESP_AUTO_CHANGED = 'ag-response-auto-changed';
+  const STORAGE_KEY_RESP_AUTO = STORAGE_KEY_SHARED_AUTO;
+  const EVENT_RESP_AUTO_CHANGED = EVENT_SHARED_AUTO_CHANGED;
 
   function getGlobalRespAuto() {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_RESP_AUTO);
-      return saved === null ? true : saved !== 'false';
-    } catch (e) {
-      return true;
-    }
+    return getGlobalAutoTranslate();
   }
 
   function setGlobalRespAuto(val) {
-    try {
-      localStorage.setItem(STORAGE_KEY_RESP_AUTO, val ? 'true' : 'false');
-    } catch (e) {}
-    try {
-      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-        window.dispatchEvent(new CustomEvent(EVENT_RESP_AUTO_CHANGED, { detail: val }));
-      }
-    } catch (e) {}
+    setGlobalAutoTranslate(val);
   }
 
   window.__ag_renderResponse = function (props) {
@@ -6121,6 +6383,10 @@
               }
             }
           };
+
+          if (!text || !text.trim()) {
+            return extraChild ? React.createElement("div", { className: "px-2 py-1" }, extraChild) : null;
+          }
 
           const showingRu = (!isOriginallyRussian && viewLang === 'ru' && !!translatedText);
           const textToRender = showingRu ? translatedText : text;
