@@ -5251,7 +5251,14 @@
       this.maxL1 = options.maxL1 || 1500;
       this.prefix = options.prefix || 'ag_tr_v2_';
       this.ttlMs = options.ttlMs || 14 * 24 * 3600 * 1000;
-      this.l2 = typeof localStorage !== 'undefined' ? localStorage : null;
+    }
+
+    _isPersistentEnabled() {
+      try {
+        return typeof localStorage !== 'undefined' && localStorage.getItem('ag_enable_persistent_cache') === 'true';
+      } catch (e) {
+        return false;
+      }
     }
 
     get(text) {
@@ -5263,9 +5270,9 @@
         this.l1.set(hash, val);
         return { value: val, level: 'L1' };
       }
-      if (this.l2) {
+      if (this._isPersistentEnabled()) {
         try {
-          const raw = this.l2.getItem(this.prefix + hash);
+          const raw = localStorage.getItem(this.prefix + hash);
           if (raw) {
             const entry = JSON.parse(raw);
             if (entry && entry.t && (Date.now() - (entry.ts || 0) < this.ttlMs)) {
@@ -5282,9 +5289,9 @@
       if (!text || !translation) return;
       const hash = fastHash(text);
       this._putL1(hash, translation);
-      if (this.l2) {
+      if (this._isPersistentEnabled()) {
         try {
-          this.l2.setItem(this.prefix + hash, JSON.stringify({ t: translation, ts: Date.now() }));
+          localStorage.setItem(this.prefix + hash, JSON.stringify({ t: translation, ts: Date.now() }));
         } catch (e) {
           this._pruneL2();
         }
@@ -5301,16 +5308,16 @@
 
     _pruneL2() {
       try {
-        if (this.l2 && typeof this.l2.key === 'function' && typeof this.l2.length === 'number') {
+        if (typeof localStorage !== 'undefined' && typeof localStorage.key === 'function' && typeof localStorage.length === 'number') {
           const toRemove = [];
-          for (let i = 0; i < this.l2.length; i++) {
-            const k = this.l2.key(i);
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
             if (k && k.startsWith(this.prefix)) {
               toRemove.push(k);
               if (toRemove.length > 40) break;
             }
           }
-          toRemove.forEach(k => this.l2.removeItem(k));
+          toRemove.forEach(k => localStorage.removeItem(k));
         }
       } catch (e) {}
     }
@@ -5320,6 +5327,7 @@
     constructor() {
       this.slots = new Map();
       this.counter = 0;
+      this.nonce = Math.random().toString(36).slice(2, 8);
     }
 
     mask(text) {
@@ -5329,28 +5337,29 @@
 
       let masked = text;
 
-      // 1. Защита блоков кода (включая стриминговые незакрытые блоки)
+      // 1. Защита блоков кода (включая незакрытые стриминговые блоки ```lang\n...)
+      // Сохраняем исходный блок байт-в-байт
       masked = masked.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~|```[a-zA-Z0-9_-]*\n[\s\S]*$)/g, (match) => {
         const id = this.counter++;
         this.slots.set(id, { type: 'BLOCK', content: match });
-        return `\n\n⟦AGB_${id}⟧\n\n`;
+        return `⟦AGB_${this.nonce}_${id}⟧`;
       });
 
       // 2. Защита URL в Markdown-ссылках [текст](url)
-      masked = masked.replace(/(\[[^\]\n]+\])\((https?:\/\/[^\s)]+|file:\/\/\/[^\s)]+)\)/g, (match, anchor, url) => {
+      masked = masked.replace(/(\[[^\]\n]+\])\(([^\s)]+)\)/g, (match, anchor, url) => {
         const id = this.counter++;
         this.slots.set(id, { type: 'URL', content: url });
-        return `${anchor}(⟦AGU_${id}⟧)`;
+        return `${anchor}(⟦AGU_${this.nonce}_${id}⟧)`;
       });
 
-      // 3. Защита инлайн-кода `code`
-      masked = masked.replace(/(`[^`\n]{1,150}`)/g, (match) => {
+      // 3. Защита инлайн-кода любой длины и мультилинейного: ``code`` или `code`
+      masked = masked.replace(/(``[\s\S]*?``|`[\s\S]*?`)/g, (match) => {
         const id = this.counter++;
         this.slots.set(id, { type: 'INLINE', content: match });
-        return `⟦AGI_${id}⟧`;
+        return `⟦AGI_${this.nonce}_${id}⟧`;
       });
 
-      // 4. Защита переносов строк в списках (чтобы Google Translate не склеивал пункты)
+      // 4. Защита переносов строк в списках
       masked = masked.replace(/\n(?=(\s*[-*+]\s|\s*\d+\.\s))/g, '\n⟦NL⟧');
 
       return masked;
@@ -5359,34 +5368,197 @@
     unmask(translatedText) {
       if (!translatedText || typeof translatedText !== 'string') return translatedText;
 
-      // 1. Восстановление переносов строк в списках (NL и НЛ)
+      // 1. Восстановление переносов строк в списках
       let res = translatedText.replace(/[ \t]*⟦\s*(?:NL|НЛ)\s*⟧[ \t]*/gi, '\n');
 
-      // 2. Восстановление точных плейсхолдеров ⟦AG[B/I/U]_id⟧
-      const placeholderRegex = /⟦\s*(?:AG|АГ)?[_]?(?:B|I|U|BLK|INL)?_?(\d+)\s*⟧/gi;
+      // 2. Восстановление точных плейсхолдеров
+      const placeholderRegex = /⟦\s*(?:AG|АГ)?[_]?(?:B|I|U|BLK|INL)?_?(?:[a-zA-Z0-9]+_)?(\d+)\s*⟧/gi;
+      const restoredIds = new Set();
+
       res = res.replace(placeholderRegex, (match, idStr) => {
         const id = parseInt(idStr, 10);
         if (!this.slots.has(id)) return match;
+        restoredIds.add(id);
         const slot = this.slots.get(id);
-        if (slot.type === 'BLOCK') {
-          return `\n\n${slot.content}\n\n`;
-        }
-        if (slot.type === 'URL') {
-          return slot.content;
-        }
-        return `${slot.content}`;
+        return slot.content; // Побайтовое сохранение
       });
 
       // 3. Совместимость с устаревшими плейсхолдерами
       res = res.replace(/___(?:AG|АГ)(?:BLK|INL)_(\d+)___/gi, (match, idStr) => {
         const id = parseInt(idStr, 10);
         if (!this.slots.has(id)) return match;
+        restoredIds.add(id);
         const slot = this.slots.get(id);
         return slot.content;
       });
 
-      return res.replace(/\n{3,}/g, '\n\n').trim();
+      // 4. Верификация целостности: если какой-то блок кода был потерян при переводе,
+      // восстанавливаем его в конце, чтобы предотвратить потерю данных
+      for (const [id, slot] of this.slots.entries()) {
+        if (!restoredIds.has(id)) {
+          if (slot.type === 'BLOCK') {
+            res += `\n\n${slot.content}\n\n`;
+          } else if (slot.type === 'INLINE') {
+            res += ` ${slot.content} `;
+          }
+        }
+      }
+
+      // ВАЖНО: Никакого глобального сжатия пробелов или trim() после вставки слотов!
+      return res;
     }
+  }
+
+  class GlobalRequestQueue {
+    constructor(maxConcurrency = 2) {
+      this.maxConcurrency = maxConcurrency;
+      this.running = 0;
+      this.queue = [];
+    }
+
+    enqueue(taskFn, signal = null) {
+      return new Promise((resolve, reject) => {
+        if (signal && signal.aborted) {
+          return reject(new DOMException('Aborted', 'AbortError'));
+        }
+
+        const run = async () => {
+          if (signal && signal.aborted) {
+            return reject(new DOMException('Aborted', 'AbortError'));
+          }
+          this.running++;
+          try {
+            const res = await taskFn();
+            resolve(res);
+          } catch (e) {
+            reject(e);
+          } finally {
+            this.running--;
+            this._dequeue();
+          }
+        };
+
+        const createAbortError = () => {
+          if (signal && signal.reason) return signal.reason;
+          if (typeof DOMException !== 'undefined') return new DOMException('Aborted', 'AbortError');
+          const err = new Error('Aborted');
+          err.name = 'AbortError';
+          return err;
+        };
+
+        const item = { run, reject, signal };
+        if (signal) {
+          signal.addEventListener('abort', () => {
+            const idx = this.queue.indexOf(item);
+            if (idx !== -1) {
+              this.queue.splice(idx, 1);
+              reject(createAbortError());
+            }
+          }, { once: true });
+        }
+
+        this.queue.push(item);
+        this._dequeue();
+      });
+    }
+
+    _dequeue() {
+      if (this.running >= this.maxConcurrency) return;
+      if (this.queue.length === 0) return;
+      const next = this.queue.shift();
+      if (next.signal && next.signal.aborted) {
+        const err = (next.signal && next.signal.reason) ||
+          (typeof DOMException !== 'undefined' ? new DOMException('Aborted', 'AbortError') : Object.assign(new Error('Aborted'), { name: 'AbortError' }));
+        next.reject(err);
+        this._dequeue();
+        return;
+      }
+      next.run();
+    }
+  }
+
+  function splitTextIntoSafeChunks(text, maxChunkLen = 1000) {
+    if (!text || text.length <= maxChunkLen) return [text];
+
+    const chunks = [];
+    const paragraphs = text.split(/\n\s*\n/);
+    let current = '';
+
+    for (const p of paragraphs) {
+      if (!p) continue;
+      if (p.length <= maxChunkLen) {
+        if (current.length + p.length + 2 <= maxChunkLen) {
+          current = current ? current + '\n\n' + p : p;
+        } else {
+          if (current) chunks.push(current);
+          current = p;
+        }
+      } else {
+        if (current) {
+          chunks.push(current);
+          current = '';
+        }
+        // Разбивка абзаца по предложениям без разрыва суррогатных пар Unicode
+        const sentences = p.split(/(?<=[.!?\n])\s+/);
+        let sub = '';
+        for (const s of sentences) {
+          if (sub.length + s.length + 1 <= maxChunkLen) {
+            sub = sub ? sub + ' ' + s : s;
+          } else {
+            if (sub) chunks.push(sub);
+            if (s.length <= maxChunkLen) {
+              sub = s;
+            } else {
+              // Деление сверхдлинных предложений по словам с контролем суррогатов
+              let pos = 0;
+              while (pos < s.length) {
+                let end = pos + maxChunkLen;
+                if (end >= s.length) {
+                  const tail = s.slice(pos).trim();
+                  if (tail) chunks.push(tail);
+                  break;
+                }
+                const openShield = s.lastIndexOf('⟦', end);
+                const closeShield = s.lastIndexOf('⟧', end);
+                if (openShield > closeShield && openShield > pos) {
+                  end = openShield;
+                } else {
+                  const spaceIdx = s.lastIndexOf(' ', end);
+                  if (spaceIdx > pos) {
+                    end = spaceIdx;
+                  }
+                }
+                if (end <= pos) {
+                  const afterClose = s.indexOf('⟧', pos);
+                  if (afterClose !== -1 && afterClose < pos + maxChunkLen * 2) {
+                    end = afterClose + 1;
+                  } else {
+                    end = Math.min(pos + maxChunkLen, s.length);
+                  }
+                }
+                if (end > pos && end < s.length) {
+                  const codeBefore = s.charCodeAt(end - 1);
+                  if (codeBefore >= 0xD800 && codeBefore <= 0xDBFF) {
+                    end--;
+                  }
+                }
+                const chunkStr = s.slice(pos, end).trim();
+                if (chunkStr) chunks.push(chunkStr);
+                if (s[end] === ' ') {
+                  pos = end + 1;
+                } else {
+                  pos = end;
+                }
+              }
+              sub = '';
+            }
+          }
+        }
+        if (sub) chunks.push(sub);
+      }
+    }
+    if (current) chunks.push(current);
+    return chunks;
   }
 
   async function mapConcurrent(items, maxWorkers, asyncTaskFn, fallbackFn = (item) => item) {
@@ -5426,21 +5598,26 @@
       .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
   }
 
-  async function fetchWithTimeout(url, options = {}, timeoutMs = 4000) {
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
     let timeoutId = null;
     let signal = options.signal;
-    if (!signal) {
-      if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
-        signal = AbortSignal.timeout(timeoutMs);
-      } else if (typeof AbortController !== 'undefined') {
-        const controller = new AbortController();
-        timeoutId = setTimeout(() => { try { controller.abort(); } catch (e) {} }, timeoutMs);
-        signal = controller.signal;
-      }
+    if (signal && signal.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
     }
+
+    const controller = new AbortController();
+    if (signal) {
+      signal.addEventListener('abort', () => {
+        try { controller.abort(); } catch (e) {}
+      }, { once: true });
+    }
+    timeoutId = setTimeout(() => {
+      try { controller.abort(); } catch (e) {}
+    }, timeoutMs);
+
     try {
       const fetchFn = typeof fetch !== 'undefined' ? fetch : globalThis.fetch;
-      return await fetchFn(url, { ...options, signal });
+      return await fetchFn(url, { ...options, signal: controller.signal });
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
     }
@@ -5450,21 +5627,23 @@
     constructor() {
       this.cache = new TwoLevelCache();
       this.inFlight = new Map();
-      this.maxWorkers = 3;
+      this.queue = new GlobalRequestQueue(2);
       this.timeoutMs = 6000;
 
+      // Авторизованные и надежные эндпоинты Google Translate
       this.endpoints = [
         {
           id: 'clients5-post',
           breaker: new CircuitBreaker('clients5-post', { baseCooldownMs: 30000 }),
-          request: async (text) => {
+          request: async (text, signal) => {
             return await fetchWithTimeout('https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ru', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
                 'Accept': 'application/json'
               },
-              body: 'q=' + encodeURIComponent(text)
+              body: 'q=' + encodeURIComponent(text),
+              signal
             }, this.timeoutMs);
           },
           parse: async (resp) => {
@@ -5477,29 +5656,17 @@
           }
         },
         {
-          id: 'mymemory',
-          breaker: new CircuitBreaker('mymemory', { baseCooldownMs: 30000 }),
-          request: async (text) => {
-            return await fetchWithTimeout('https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) + '&langpair=en|ru', {
-              headers: { 'Accept': 'application/json' }
-            }, 3500);
-          },
-          parse: async (resp) => {
-            const data = await resp.json();
-            return data && data.responseData && data.responseData.translatedText ? decodeHtmlEntities(data.responseData.translatedText) : '';
-          }
-        },
-        {
           id: 'clients1-post',
           breaker: new CircuitBreaker('clients1-post', { baseCooldownMs: 40000 }),
-          request: async (text) => {
+          request: async (text, signal) => {
             return await fetchWithTimeout('https://clients1.google.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
                 'Accept': 'application/json'
               },
-              body: 'q=' + encodeURIComponent(text)
+              body: 'q=' + encodeURIComponent(text),
+              signal
             }, this.timeoutMs);
           },
           parse: async (resp) => {
@@ -5513,14 +5680,15 @@
         {
           id: 'google-post',
           breaker: new CircuitBreaker('google-post', { baseCooldownMs: 45000 }),
-          request: async (text) => {
+          request: async (text, signal) => {
             return await fetchWithTimeout('https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
                 'Accept': 'application/json'
               },
-              body: 'q=' + encodeURIComponent(text)
+              body: 'q=' + encodeURIComponent(text),
+              signal
             }, this.timeoutMs);
           },
           parse: async (resp) => {
@@ -5534,9 +5702,10 @@
         {
           id: 'clients5-get',
           breaker: new CircuitBreaker('clients5-get', { baseCooldownMs: 30000 }),
-          request: async (text) => {
+          request: async (text, signal) => {
             return await fetchWithTimeout('https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ru&q=' + encodeURIComponent(text), {
-              headers: { 'Accept': 'application/json' }
+              headers: { 'Accept': 'application/json' },
+              signal
             }, this.timeoutMs);
           },
           parse: async (resp) => {
@@ -5560,7 +5729,7 @@
       return (ru > 10 && ru > en * 0.4) || (ru > 4 && en < 4);
     }
 
-    async translateChunk(text) {
+    async translateChunk(text, signal = null) {
       if (!text || !text.trim()) return text;
       const trimmed = text.trim();
       const cached = this.cache.get(trimmed);
@@ -5570,36 +5739,43 @@
         return text;
       }
 
-      for (const ep of this.endpoints) {
-        if (!ep.breaker.isAvailable()) continue; // Fast-Fail 0 ms
-        try {
-          const resp = await ep.request(trimmed);
-          if (!resp) { ep.breaker.recordFailure(0, 'No resp'); continue; }
-          if (resp.status === 429) {
-            const retry = resp.headers && typeof resp.headers.get === 'function' ? parseInt(resp.headers.get('retry-after') || '0', 10) : null;
-            ep.breaker.recordFailure(429, 'Rate Limit', retry);
-            continue;
-          }
-          if (!resp.ok) { ep.breaker.recordFailure(resp.status, `HTTP ${resp.status}`); continue; }
-
-          const raw = await ep.parse(resp);
-          if (raw && typeof raw === 'string') {
-            const cleaned = raw.replace(/,(?:en|ru|auto)$/i, '').trim();
-            if (cleaned && /[а-яА-ЯёЁ]/.test(cleaned)) {
-              ep.breaker.recordSuccess();
-              this.cache.set(trimmed, cleaned);
-              return cleaned;
-            }
-          }
-          ep.breaker.recordFailure(resp.status || 200, 'Non-Russian result');
-        } catch (err) {
-          ep.breaker.recordFailure(0, err);
+      return await this.queue.enqueue(async () => {
+        if (signal && signal.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
         }
-      }
-      return text;
+
+        for (const ep of this.endpoints) {
+          if (!ep.breaker.isAvailable()) continue;
+          try {
+            const resp = await ep.request(trimmed, signal);
+            if (!resp) { ep.breaker.recordFailure(0, 'No resp'); continue; }
+            if (resp.status === 429) {
+              const retry = resp.headers && typeof resp.headers.get === 'function' ? parseInt(resp.headers.get('retry-after') || '0', 10) : null;
+              ep.breaker.recordFailure(429, 'Rate Limit', retry);
+              continue;
+            }
+            if (!resp.ok) { ep.breaker.recordFailure(resp.status, `HTTP ${resp.status}`); continue; }
+
+            const raw = await ep.parse(resp);
+            if (raw && typeof raw === 'string') {
+              const cleaned = raw.replace(/,(?:en|ru|auto)$/i, '').trim();
+              if (cleaned && /[а-яА-ЯёЁ]/.test(cleaned)) {
+                ep.breaker.recordSuccess();
+                this.cache.set(trimmed, cleaned);
+                return cleaned;
+              }
+            }
+            ep.breaker.recordFailure(resp.status || 200, 'Non-Russian result');
+          } catch (err) {
+            if (err && err.name === 'AbortError') throw err;
+            ep.breaker.recordFailure(0, err);
+          }
+        }
+        return text;
+      }, signal);
     }
 
-    async translate(fullText) {
+    async translate(fullText, signal = null) {
       if (!fullText || typeof fullText !== 'string' || !fullText.trim()) return fullText;
       const cached = this.cache.get(fullText);
       if (cached && cached.value) return cached.value;
@@ -5608,27 +5784,16 @@
       const task = (async () => {
         const shield = new MarkdownShield();
         const maskedText = shield.mask(fullText);
-        const paragraphs = maskedText.split(/\n\s*\n/);
-        let translatedMasked = '';
+        const safeChunks = splitTextIntoSafeChunks(maskedText, 1000);
 
-        if (maskedText.length < 1200 || paragraphs.length <= 1) {
-          translatedMasked = await this.translateChunk(maskedText);
-        } else {
-          const translatedParagraphs = await mapConcurrent(
-            paragraphs,
-            this.maxWorkers,
-            async (para) => {
-              if (!para || !para.trim()) return para;
-              if (para.length < 1500) return await this.translateChunk(para);
-              const lines = para.split('\n');
-              const trLines = await mapConcurrent(lines, this.maxWorkers, async (l) => l.trim() ? await this.translateChunk(l) : l);
-              return trLines.join('\n');
-            },
-            (p) => p
-          );
-          translatedMasked = translatedParagraphs.join('\n\n');
+        let translatedChunks = [];
+        for (const chunk of safeChunks) {
+          if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
+          const trChunk = await this.translateChunk(chunk, signal);
+          translatedChunks.push(trChunk);
         }
 
+        const translatedMasked = translatedChunks.join('\n\n');
         const result = shield.unmask(translatedMasked);
         if (/[а-яА-ЯёЁ]/.test(result)) this.cache.set(fullText, result);
         return result;
@@ -5743,14 +5908,14 @@
   function getGlobalAutoTranslate() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SHARED_AUTO);
-      if (saved !== null) return saved !== 'false';
+      if (saved !== null) return saved === 'true';
       const old1 = localStorage.getItem('ag_thought_auto_translate');
-      if (old1 !== null) return old1 !== 'false';
+      if (old1 !== null) return old1 === 'true';
       const old2 = localStorage.getItem('ag_response_auto_translate');
-      if (old2 !== null) return old2 !== 'false';
-      return true;
+      if (old2 !== null) return old2 === 'true';
+      return false; // По умолчанию сетевой перевод строго ВЫКЛЮЧЕН
     } catch (e) {
-      return true;
+      return false;
     }
   }
 
@@ -5903,11 +6068,12 @@
               }
             } catch (e) {}
 
-            if (!autoTranslate && viewLang !== 'ru') {
+            if (!autoTranslate) {
               return;
             }
 
             let cancelled = false;
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
             // Во время активной генерации — debounce 300мс для плавного потока
             const delay = isActive ? 300 : 50;
 
@@ -5919,13 +6085,14 @@
                   ? window.__ag_translateLiveText
                   : (typeof translateLiveText === 'function' ? translateLiveText : null);
                 if (typeof trFn === 'function') {
-                  const res = await trFn(thinking);
+                  const res = await trFn(thinking, controller ? controller.signal : null);
                   if (!cancelled && res) {
                     setTranslated(res);
                   }
                 }
               } catch (err) {
-                console.warn('[i18n-thought]', err);
+                if (err && err.name === 'AbortError') return;
+                console.warn('[i18n-thought]', err && err.message ? err.message : 'translation error');
               } finally {
                 if (!cancelled) setIsTranslating(false);
               }
@@ -5934,6 +6101,9 @@
             return () => {
               cancelled = true;
               clearTimeout(timer);
+              if (controller) {
+                try { controller.abort(); } catch (e) {}
+              }
             };
           }, [thinking, autoTranslate, viewLang, isActive]);
 
@@ -6293,11 +6463,12 @@
               }
             } catch (e) {}
 
-            if (!autoTranslate && viewLang !== 'ru') {
+            if (!autoTranslate) {
               return;
             }
 
             let cancelled = false;
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
             const delay = isDone ? 50 : 400;
 
             const timer = setTimeout(async () => {
@@ -6308,13 +6479,14 @@
                   ? window.__ag_translateLiveText
                   : (typeof translateLiveText === 'function' ? translateLiveText : null);
                 if (typeof trFn === 'function') {
-                  const res = await trFn(text);
+                  const res = await trFn(text, controller ? controller.signal : null);
                   if (!cancelled && res && res !== text && /[а-яА-ЯёЁ]/.test(res)) {
                     setTranslatedText(res);
                   }
                 }
               } catch (err) {
-                console.warn('[i18n-resp]', err);
+                if (err && err.name === 'AbortError') return;
+                console.warn('[i18n-resp]', err && err.message ? err.message : 'translation error');
               } finally {
                 if (!cancelled) setIsTranslating(false);
               }
@@ -6323,6 +6495,9 @@
             return () => {
               cancelled = true;
               clearTimeout(timer);
+              if (controller) {
+                try { controller.abort(); } catch (e) {}
+              }
             };
           }, [text, isDone, autoTranslate, isOriginallyRussian, viewLang]);
 
